@@ -98,8 +98,8 @@ export async function installManaged(app,version,{fetchSource=downloadSource,ins
 }
 
 // Background cleanup/verify/scan workers run code from the current folder; never swap code under them.
-export async function runningWorkers(){
- const base=path.join(dataDir,'cleanup');let jobs=[];try{jobs=await readdir(base);}catch{return [];}
+export async function runningWorkers(base=path.join(dataDir,'cleanup')){
+ let jobs=[];try{jobs=await readdir(base);}catch{return [];}
  const running=[];
  for(const job of jobs)for(const file of ['worker.json','verification.json','scan-worker.json']){
   let v;try{v=await readJson(path.join(base,job,file));}catch{continue;}
@@ -108,8 +108,8 @@ export async function runningWorkers(){
  return running;
 }
 
-export async function applyUpdate({layout=installLayout(),version,...deps}={}){
- const busy=await runningWorkers();
+export async function applyUpdate({layout=installLayout(),version,cleanupDir,...deps}={}){
+ const busy=await runningWorkers(cleanupDir);
  if(busy.length)throw new ApiError('cleanup_running','Cleanup is running in the background; update after it finishes or is paused.',{running:busy});
  if(layout.kind==='manual')throw new ApiError('update_manual',`This copy was unpacked by hand and cannot update itself. Reinstall with the one-line installer from https://github.com/${repository}`);
  const target=version||(await checkForUpdate({force:true})).latest;

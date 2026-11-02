@@ -81,19 +81,21 @@ test('a failed download or dependency install leaves the current version untouch
  await assert.rejects(installManaged(app,'3.0.0',{fetchSource:(v,d)=>fakeSource('9.9.9',d),installDeps:async()=>{}}),e=>e.code==='update_version_mismatch');
 });
 
+// Own cleanup folder: other test files run in parallel and create live workers in the shared data dir.
 test('update refuses while a cleanup worker is running',async t=>{
- const job=path.join(dataDir,'cleanup','99999999-9999-4999-8999-999999999999');
- await mkdir(job,{recursive:true});t.after(()=>rm(job,{recursive:true,force:true}));
+ const cleanupDir=await temp(t),job=path.join(cleanupDir,'99999999-9999-4999-8999-999999999999');
+ await mkdir(job,{recursive:true});
  await writeFile(path.join(job,'worker.json'),JSON.stringify({pid:process.pid,startedAt:new Date().toISOString()}));
- assert.equal((await runningWorkers()).length,1);
- await assert.rejects(applyUpdate({layout:{kind:'managed',app:'/nonexistent'},version:'99.0.0'}),e=>e.code==='cleanup_running');
+ assert.equal((await runningWorkers(cleanupDir)).length,1);
+ await assert.rejects(applyUpdate({layout:{kind:'managed',app:'/nonexistent'},version:'99.0.0',cleanupDir}),e=>e.code==='cleanup_running');
  await writeFile(path.join(job,'worker.json'),JSON.stringify({pid:process.pid,endedAt:new Date().toISOString()}));
- assert.equal((await runningWorkers()).length,0,'a finished worker does not block');
+ assert.equal((await runningWorkers(cleanupDir)).length,0,'a finished worker does not block');
 });
 
-test('update reports up to date and refuses hand-unpacked copies',async()=>{
- assert.equal((await applyUpdate({layout:{kind:'managed',app:'/nonexistent'},version:currentVersion})).status,'up_to_date');
- await assert.rejects(applyUpdate({layout:{kind:'manual',dir:'/x'}}),e=>e.code==='update_manual');
+test('update reports up to date and refuses hand-unpacked copies',async t=>{
+ const cleanupDir=await temp(t);
+ assert.equal((await applyUpdate({layout:{kind:'managed',app:'/nonexistent'},version:currentVersion,cleanupDir})).status,'up_to_date');
+ await assert.rejects(applyUpdate({layout:{kind:'manual',dir:'/x'},cleanupDir}),e=>e.code==='update_manual');
 });
 
 test('client config gets the neurover entry, keeps other servers and a backup',async t=>{
