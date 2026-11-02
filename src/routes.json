@@ -1,0 +1,928 @@
+{
+  "client.storage.usage": {
+    "uri": "storage/usage",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.workflow-readiness": {
+    "uri": "workflow-readiness",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.subscriptions.index": {
+    "uri": "subscriptions",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.workflows.index": {
+    "uri": "workflows",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.workflows.demo": {
+    "uri": "workflows/demo",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.media-library.index": {
+    "uri": "media-library",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.media-library.access": {
+    "uri": "media-library/{mediaAsset}/access",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "mediaAsset"
+    ],
+    "bindings": {
+      "mediaAsset": "id"
+    }
+  },
+  "client.workflows.store": {
+    "uri": "workflows",
+    "methods": [
+      "POST"
+    ]
+  },
+  "client.workflows.show": {
+    "uri": "workflows/{workflowProject}",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.update": {
+    "uri": "workflows/{workflowProject}",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.destroy": {
+    "uri": "workflows/{workflowProject}",
+    "methods": [
+      "DELETE"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.viewport.update": {
+    "uri": "workflows/{workflowProject}/viewport",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.graph-snapshot.restore": {
+    "uri": "workflows/{workflowProject}/graph-snapshot",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.node-positions.update": {
+    "uri": "workflows/{workflowProject}/node-positions",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.clone": {
+    "uri": "workflows/{workflowProject}/clone",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.author-nodes.index": {
+    "uri": "workflows/{workflowProject}/author-nodes",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.author-nodes.store": {
+    "uri": "workflows/{workflowProject}/author-nodes/{authorNode}",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "authorNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "authorNode": "id"
+    }
+  },
+  "client.workflows.author-nodes.engagement": {
+    "uri": "workflows/{workflowProject}/author-nodes/{authorNode}/engagement",
+    "methods": [
+      "PUT"
+    ],
+    "parameters": [
+      "workflowProject",
+      "authorNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "authorNode": "id"
+    }
+  },
+  "client.workflows.uploads.start": {
+    "uri": "workflows/{workflowProject}/uploads/start",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.uploads.batch.start": {
+    "uri": "workflows/{workflowProject}/uploads/batch/start",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.uploads.store": {
+    "uri": "workflows/{workflowProject}/uploads",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.uploads.attach": {
+    "uri": "workflows/{workflowProject}/uploads/{workflowNode}/file",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.uploads.direct": {
+    "uri": "workflows/{workflowProject}/uploads/{workflowNode}/direct",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.uploads.direct.complete": {
+    "uri": "workflows/{workflowProject}/uploads/{workflowNode}/direct/complete",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.uploads.retry": {
+    "uri": "workflows/{workflowProject}/uploads/{workflowNode}/retry",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.uploads.status": {
+    "uri": "workflows/{workflowProject}/uploads/{workflowNode}/status",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.media-library.index": {
+    "uri": "workflows/{workflowProject}/media-library",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.media-library.uploads.store": {
+    "uri": "workflows/{workflowProject}/media-library/uploads",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.media-library.uploads.direct": {
+    "uri": "workflows/{workflowProject}/media-library/uploads/direct",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.media-library.uploads.direct.complete": {
+    "uri": "workflows/{workflowProject}/media-library/uploads/direct/complete",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.media-library.uploads.status": {
+    "uri": "workflows/{workflowProject}/media-library/uploads/{clientUploadId}",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject",
+      "clientUploadId"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.media-library.access": {
+    "uri": "workflows/{workflowProject}/media-library/{mediaAsset}/access",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject",
+      "mediaAsset"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "mediaAsset": "id"
+    }
+  },
+  "client.workflows.media-library.deletion-preview": {
+    "uri": "workflows/{workflowProject}/media-library/deletion-preview",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.media-library.destroy": {
+    "uri": "workflows/{workflowProject}/media-library",
+    "methods": [
+      "DELETE"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.nodes.store": {
+    "uri": "workflows/{workflowProject}/nodes",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.nodes.update": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.nodes.destroy": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}",
+    "methods": [
+      "DELETE"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.nodes.duplicate": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/duplicate",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.nodes.restore-last-success": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/restore-last-success",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.nodes.video-playback.show": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/video-playback",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.nodes.price-preview": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/price-preview",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.prompt-enhancements.price-preview": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/prompt-enhancements/price-preview",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.prompt-enhancements.store": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/prompt-enhancements",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.prompt-enhancements.show": {
+    "uri": "workflows/{workflowProject}/prompt-enhancements/{workflowPromptEnhancement}",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowPromptEnhancement"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowPromptEnhancement": "uuid"
+    }
+  },
+  "client.workflows.prompt-enhancements.apply": {
+    "uri": "workflows/{workflowProject}/prompt-enhancements/{workflowPromptEnhancement}/apply",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowPromptEnhancement"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowPromptEnhancement": "uuid"
+    }
+  },
+  "client.workflows.nodes.cancel": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/cancel",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.runs.store": {
+    "uri": "workflows/{workflowProject}/runs",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.runs.preview": {
+    "uri": "workflows/{workflowProject}/runs/preview",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.runs.budget.update": {
+    "uri": "workflows/{workflowProject}/runs/{workflowRun}/budget",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowRun"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowRun": "id"
+    }
+  },
+  "client.workflows.runs.dismiss": {
+    "uri": "workflows/{workflowProject}/runs/{workflowRun}/dismiss",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowRun"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowRun": "id"
+    }
+  },
+  "client.workflows.runs.stop": {
+    "uri": "workflows/{workflowProject}/runs/{workflowRun}/stop",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowRun"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowRun": "id"
+    }
+  },
+  "client.workflows.runs.show": {
+    "uri": "workflows/{workflowProject}/runs/{workflowRun}",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowRun"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowRun": "id"
+    }
+  },
+  "client.workflows.runs.steps.retry": {
+    "uri": "workflows/{workflowProject}/runs/{workflowRun}/steps/{workflowRunStep}/retry",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowRun",
+      "workflowRunStep"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowRun": "id",
+      "workflowRunStep": "id"
+    }
+  },
+  "client.workflows.nodes.runs.show": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/runs/{workflowNodeRun}",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode",
+      "workflowNodeRun"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id",
+      "workflowNodeRun": "id"
+    }
+  },
+  "client.workflows.nodes.runs.select": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/runs/{workflowNodeRun}/select",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode",
+      "workflowNodeRun"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id",
+      "workflowNodeRun": "id"
+    }
+  },
+  "client.workflows.nodes.references.store": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/references",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.nodes.references.update": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/references/{reference}",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode",
+      "reference"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.nodes.references.destroy": {
+    "uri": "workflows/{workflowProject}/nodes/{workflowNode}/references/{reference}",
+    "methods": [
+      "DELETE"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowNode",
+      "reference"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowNode": "id"
+    }
+  },
+  "client.workflows.edges.store": {
+    "uri": "workflows/{workflowProject}/edges",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.edges.update": {
+    "uri": "workflows/{workflowProject}/edges/{workflowEdge}",
+    "methods": [
+      "PATCH"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowEdge"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowEdge": "id"
+    }
+  },
+  "client.workflows.edges.destroy": {
+    "uri": "workflows/{workflowProject}/edges/{workflowEdge}",
+    "methods": [
+      "DELETE"
+    ],
+    "parameters": [
+      "workflowProject",
+      "workflowEdge"
+    ],
+    "bindings": {
+      "workflowProject": "id",
+      "workflowEdge": "id"
+    }
+  },
+  "client.workflows.messages.index": {
+    "uri": "workflows/{workflowProject}/messages",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.messages.status": {
+    "uri": "workflows/{workflowProject}/messages/status",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.messages.context.reset": {
+    "uri": "workflows/{workflowProject}/messages/context/reset",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.messages.price-preview": {
+    "uri": "workflows/{workflowProject}/messages/price-preview",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.messages.store": {
+    "uri": "workflows/{workflowProject}/messages",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.workflows.assistant-actions.store": {
+    "uri": "workflows/{workflowProject}/assistant-actions",
+    "methods": [
+      "POST"
+    ],
+    "parameters": [
+      "workflowProject"
+    ],
+    "bindings": {
+      "workflowProject": "id"
+    }
+  },
+  "client.storage": {
+    "uri": "storage",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.balance": {
+    "uri": "balance",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.charges": {
+    "uri": "credits/charges",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.statistics": {
+    "uri": "statistics",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.balance.charges": {
+    "uri": "balance/charges",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.audit": {
+    "uri": "audit",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "notifications.feed": {
+    "uri": "notifications/feed",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "client.notifications.read": {
+    "uri": "notifications/read",
+    "methods": [
+      "POST"
+    ]
+  },
+  "profile.edit": {
+    "uri": "profile",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  "login": {
+    "uri": "/",
+    "methods": [
+      "POST"
+    ]
+  },
+  "logout": {
+    "uri": "logout",
+    "methods": [
+      "POST"
+    ]
+  }
+}

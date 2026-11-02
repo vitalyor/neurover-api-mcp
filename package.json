@@ -1,0 +1,49 @@
+{
+  "name": "neurover-api-mcp",
+  "version": "0.8.1",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node scripts/test.mjs",
+    "research": "node scripts/discover.js",
+    "smoke": "node scripts/smoke.js",
+    "test:dedup-live": "node scripts/dedup-live.mjs",
+    "test:cleanup-live": "node scripts/cleanup-live.mjs",
+    "test:gallery-fixtures": "node scripts/gallery-fixtures.mjs",
+    "gallery": "node src/cleanup-web.js",
+    "setup": "node bin/neurover.mjs setup",
+    "bundle": "node scripts/bundle.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@napi-rs/keyring": "2.1.1",
+    "playwright": "^1.62.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "rea-agents": "6.5.0"
+  },
+  "description": "Local Neurover MCP with manual sign-in or native system credential storage",
+  "bin": {
+    "neurover-mcp": "bin/neurover.mjs"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "test/",
+    "scripts/test.mjs",
+    "scripts/check-readonly.mjs",
+    "install.sh",
+    "install.command",
+    "install.cmd",
+    "docs/INSTALL.md",
+    "docs/PRIVACY.md",
+    "scripts/bundle.mjs",
+    "npm-shrinkwrap.json"
+  ]
+}

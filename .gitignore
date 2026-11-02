@@ -1,0 +1,35 @@
+# Allowlist: everything is private unless listed below.
+# Never add .data, research, docs/DEV-NOTES.md, live scripts or check reports.
+/*
+!/.gitignore
+!/.github/
+!/README.md
+!/LICENSE
+!/package.json
+!/package-lock.json
+!/install.sh
+!/install.command
+!/install.cmd
+!/bin/
+!/src/
+!/test/
+
+!/scripts/
+/scripts/*
+!/scripts/test.mjs
+!/scripts/bundle.mjs
+!/scripts/check-readonly.mjs
+!/scripts/gallery-fixtures.mjs
+!/scripts/gallery-live-fixture.mjs
+
+!/docs/
+/docs/*
+!/docs/INSTALL.md
+!/docs/PRIVACY.md
+!/docs/ARCHITECTURE.md
+!/docs/API-CONTRACTS.md
+
+.DS_Store
+._*
+*.log
+*.tgz
