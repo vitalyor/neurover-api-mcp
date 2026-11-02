@@ -29,8 +29,28 @@ async function ask(label,{secret=false}={}){
  const rl=createInterface({input:process.stdin,output,terminal:true});
  try{return await rl.question(secret?'':label);}finally{rl.close();if(secret)process.stdout.write('\n');}
 }
+const manualDone=name=>`Вход выполнен. Сессия сохранена, пароль нет.\nКогда Neurover завершит сессию, войдите снова: node bin/neurover.mjs login ${name}\nЧтобы MCP входил сам, включите хранение пароля: node bin/neurover.mjs settings ${name}`;
+const agentHandoff=(command,name)=>`этот шаг выполняет человек в своём терминале.
+Агент: не вводи пароль за пользователя и не проси его прислать пароль в чат.
+${command==='setup'||command==='settings'?`
+1. Спроси пользователя, как MCP будет входить в Neurover, объяснив разницу.
+   MCP работает по сессии сайта; Neurover завершает её, часто после бездействия.
+   1 — Вручную: хранится только сессия. Когда она закончится, MCP ответит
+       login_required, и пользователь снова войдёт командой login.
+   2 — Автоматически: пароль хранится в системном хранилище ОС (macOS Keychain,
+       Windows Credential Manager, Linux Secret Service), MCP сам входит заново.
+       Удобнее при регулярной работе и долгих фоновых заданиях.
+2. Попроси пользователя выполнить в своём терминале и выбрать там этот вариант:
+   cd "${root}" && node bin/neurover.mjs ${command}${name?' '+name:''}
+3. Затем выполни: node bin/neurover.mjs config — и с согласия пользователя добавь
+   показанные command/args/env в настройки его MCP-клиента; клиент нужно перезапустить.`:`
+Попроси пользователя выполнить в своём терминале:
+   cd "${root}" && node bin/neurover.mjs ${command}${name?' '+name:''}
+Для ручного входа без терминала есть MCP-инструмент neurover_browser_login:
+окно браузера откроется у пользователя, и он войдёт на сайте сам.`}`;
 async function signIn(c){
- const method=(await ask('Вход: 1 — браузер, 2 — пароль однократно в этом терминале [1]: ')).trim()||'1';
+ console.log('\nСейчас нужно войти один раз, чтобы получить сессию. Пароль при этом не сохраняется.\n  1 — в окне браузера: откроется neurover.io, вы входите там сами\n  2 — ввести пароль здесь, в терминале (не отображается); если браузер недоступен');
+ const method=(await ask('Выберите 1 или 2 [1]: ')).trim()||'1';
  if(method==='2'){
   const config=await accountSettings(c.account);let password=await ask('Пароль (не сохраняется и не отображается): ',{secret:true});
   try{return await c.login({email:config.email,password});}finally{password=null;}
@@ -62,6 +82,8 @@ async function run(){
  }
  if(!['setup','settings','login','unlock','lock'].includes(command))throw new ApiError('invalid_command','Use --help.');
  if(command==='lock'){accountName(name);await callBroker('lock',name);console.log('Ключ расшифровки удалён из памяти. Существующая сессия сайта не завершается.');return;}
+ // Agents run installers without a terminal; stop with instructions instead of waiting for input nobody can give.
+ if(!process.stdin.isTTY)throw new ApiError('interactive_terminal_required',agentHandoff(command,name));
  if(command==='unlock'){
   accountName(name);if((await accountSettings(name))?.mode!=='encrypted')throw new ApiError('invalid_mode','This account does not use encrypted storage.');
   let masterPassword=await ask('Мастер-пароль (не отображается): ',{secret:true});
@@ -69,21 +91,41 @@ async function run(){
   console.log('Разблокировано. Автовход работает до lock или завершения локального помощника/компьютера.');return;
  }
  if(command==='login'){
-  accountName(name);if(!await accountSettings(name))throw new ApiError('account_setup_required','Run setup first.');
-  const c=await clientFor(name);await signIn(c);console.log('Вход выполнен. Сессия сохранена локально.');return;
+  accountName(name);const config=await accountSettings(name);if(!config)throw new ApiError('account_setup_required','Run setup first.');
+  const c=await clientFor(name);await signIn(c);console.log(config.mode==='manual'?manualDone(name):'Вход выполнен. Сессия сохранена локально.');return;
  }
  const account=accountName(command==='settings'?name:(await ask('Имя аккаунта (латиница, цифры, _ и -): ')).trim());
  const previous=await accountSettings(account);
  if(command==='settings'&&!previous)throw new ApiError('account_setup_required','Run setup first.');
  if(command==='setup'&&previous)throw new ApiError('account_exists','Use settings to change this account.');
  const email=previous?.email||(await ask('Email Neurover: ')).trim();
- console.log('\n1 — Ручной вход: пароль не сохраняется.\n2 — Системное хранилище: macOS Keychain / Windows Credential Manager / Linux Secret Service.\nОС может запросить разрешение или разблокировку. В файл пароль не записывается.\nСессия (cookies) сохраняется локально в обоих режимах для фоновых заданий.\nНастройку можно изменить командой settings.');
+ console.log(`
+Как MCP будет входить в Neurover
+
+MCP работает по сессии сайта (cookies). Она сохраняется на этом компьютере
+после любого входа, и пока она действует, пароль не нужен. Но Neurover
+завершает сессию, например после бездействия, и тогда нужен новый вход.
+Выберите, кто будет входить заново:
+
+  1 — Я сам, вручную. Пароль нигде не сохраняется.
+      Когда сессия закончится, MCP сообщит login_required, и нужно будет
+      выполнить в терминале: node bin/neurover.mjs login ${account}
+      Подходит, если пользуетесь MCP редко или не хотите хранить пароль.
+
+  2 — MCP сам, автоматически. Пароль хранится в системном хранилище
+      (macOS Keychain / Windows Credential Manager / Linux Secret Service),
+      а не в файлах MCP. Когда сессия закончится, MCP сам войдёт заново
+      и повторит запрос. Подходит для регулярной работы и долгих фоновых
+      заданий (очистка, генерации). ОС может спросить разрешение на доступ.
+
+В обоих режимах сохранённая сессия даёт доступ к аккаунту: не делитесь папкой данных.
+Режим можно поменять позже: node bin/neurover.mjs settings ${account}`);
  const choice=(await ask('Выберите 1 или 2 [1]: ')).trim()||'1';
  if(!['1','2'].includes(choice))throw new ApiError('invalid_choice','Choose 1 or 2.');
  if(choice==='1'){
   await configureAccount(account,{email,mode:'manual'});
-  console.log('Ручной вход включён. Сохранённый пароль этой реализации удалён. Старое хранилище другой реализации не изменяется.');
-  if(!previous)await signIn(await clientFor(account));
+  console.log(previous?'Ручной вход включён. Сохранённый пароль этой реализации удалён. Старое хранилище другой реализации не изменяется.':'Ручной вход включён.');
+  if(!previous){await signIn(await clientFor(account));console.log(manualDone(account));}
  }else{
   let password=await ask('Пароль Neurover (не отображается): ',{secret:true});
   try{
@@ -91,7 +133,7 @@ async function run(){
    const c=await clientFor(account);await c.login({email,password});
    await configureAccount(account,{email,mode:'vault',password});
   }finally{password=null;}
-  console.log('Пароль сохранён в системном хранилище. Автовход зависит от его доступности и разрешений ОС.');
+  console.log('Вход выполнен, пароль сохранён в системном хранилище. Когда Neurover завершит сессию, MCP войдёт заново сам, если хранилище доступно и ОС разрешает доступ.');
  }
  console.log('\nПодключение к MCP-клиенту:');console.log(JSON.stringify(mcpConfig(),null,2));
 }
