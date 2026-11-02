@@ -98,6 +98,8 @@ const DESCRIPTIONS={
  neurover_api_read:'Прочитать любой GET-маршрут сайта. Только если нет отдельного инструмента.',
  neurover_api_write:'Изменяющий запрос к маршруту сайта. Только если нет отдельного инструмента; платные запуски — только через prepare/submit.'
 };
+// Generation goes through the workflow chat; canvas tiles change only when the user explicitly asks about the canvas.
+for(const name of ['neurover_add_node','neurover_set_text_node','neurover_rename_node','neurover_update_node','neurover_node_duplicate','neurover_node_restore_last_success','neurover_delete_node','neurover_connect_nodes','neurover_delete_edge','neurover_add_media_to_workflow','neurover_prepare_run'])DESCRIPTIONS[name]+=' Меняет полотно: вызывать только по прямой просьбе пользователя о плитках или полотне. Для обычной генерации — prepare_generation (через чат полотна).';
 // Weekly update check in the background; its notice rides on one tool result per session, never on every call.
 const withNotice=updateNotifier();
 function tool(name,description,schema,fn,{readOnly=true,destructive=false,noAccount=false}={}){

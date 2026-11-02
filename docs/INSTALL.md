@@ -14,7 +14,7 @@ Windows (PowerShell): `irm https://raw.githubusercontent.com/vitalyor/neurover-a
 1. Скрипт проверяет Node.js, скачивает с GitHub последнюю выпущенную версию (тег `vX.Y.Z`) и ставит её в `<папка данных>/app/versions/<версия>`.
 2. Ставит зависимости из npm (`--ignore-scripts`) и Chromium средствами Playwright.
 3. Запускает настройку: имя аккаунта, email, режим входа (см. «Как устроен вход»), сам вход. Пароль вводится только в вашем терминале без отображения либо на neurover.io в отдельном окне. Не отправляйте его в чат.
-4. Находит Claude Desktop, Cursor и Windsurf и для каждого спрашивает «Добавить? [Д/н]». Перед правкой файла настроек сохраняется копия `*.bak-neurover`; чужие записи не меняются, файл с ошибкой JSON не трогается. Для Claude Code печатается команда `claude mcp add`, для остальных — блок `mcpServers`.
+4. Находит Claude Desktop, Claude Code, Codex, Cursor и Windsurf и для каждого спрашивает «Добавить? [Д/н]». JSON-настройки (Claude Desktop, Cursor, Windsurf) и `~/.codex/config.toml` правятся с копией `*.bak-neurover`; чужие записи не меняются, файл с ошибкой JSON не трогается. Claude Code подключается его командой `claude mcp add --scope user`. Для остальных печатается блок `mcpServers`.
 5. Полностью перезапустите приложение.
 
 Клиенты подключаются к постоянному файлу `<папка данных>/app/neurover.mjs`. Он запускает текущую версию, поэтому при обновлении настройки клиентов не меняются. Подключить приложения ещё раз: `node "<папка данных>/app/neurover.mjs" connect`.

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import {mkdir, stat, readFile, unlink, copyFile} from 'node:fs/promises';
+import {mkdir, stat, unlink, copyFile} from 'node:fs/promises';
 import {createWriteStream,constants} from 'node:fs';
 import {Readable} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
@@ -23,15 +23,6 @@ export async function download(client,input) {
   const temp=path.join(input.outputDir,`.neurover-${randomUUID()}.part`);
   try{await pipeline(Readable.fromWeb(response.body),createWriteStream(temp,{flags:'wx',mode:0o600}));await copyFile(temp,destination,constants.COPYFILE_EXCL);}finally{await unlink(temp).catch(()=>{});}
   return {status:'saved',mediaAssetId:input.mediaAssetId,path:destination,bytes:(await stat(destination)).size,contentType};
-}
-async function uploadNew(client,input,buffer,attempt) {
-  const start=await client.http(`/workflows/${input.workflowId}/uploads/start`,{method:'POST',data:{uuid:attempt.uuid,original_name:path.basename(input.filePath),position:input.position||{x:100,y:100},size:{width:320,height:240},reference_target_node_id:null}});
-  await attempt.onStarted(start);
-  if(start.node?.status==='completed')return start;
-  if(!start.node?.id||!start.attempt_key)throw new ApiError('upload_uncertain','Upload placeholder could not be confirmed. Inspect the workflow before retrying.');
-  const form=new FormData();form.append('attempt_key',start.attempt_key);form.append('file',new Blob([buffer],{type:input.mimeType}),path.basename(input.filePath));
-  try{return await client.http(`/workflows/${input.workflowId}/uploads/${start.node.id}/file`,{method:'POST',multipart:form});}
-  catch(e){throw new ApiError('upload_incomplete','Upload outcome is uncertain; it will not be automatically repeated.',{nodeId:start.node.id,cause:e.code});}
 }
 // Same route as the chat "Прикрепить референсы → Загрузить" button: media-library only, no canvas node.
 const storageHeaders=new Set(['host','content-length','cookie','authorization']);
@@ -59,39 +50,11 @@ export async function uploadToLibrary(client,input,buffer,attempt) {
   const r=await client.http(base,{method:'POST',multipart:form,timeoutMs:90000});
   return {asset:r?.asset,replayed:r?.replayed===true};
 }
-// input.library={aiModelId,referenceField} → chat/library upload; otherwise the canvas upload used by neurover_upload_media.
+// Every upload goes to the media library like the chat button; input.library={aiModelId,referenceField} is required.
+// The canvas upload (/uploads/start) was removed: it added an asset node to the workflow.
 export async function ensureMedia(client,input) {
-  return ensureFile(client,input,(data,buffer,attempt)=>data.library?uploadToLibrary(client,data,buffer,attempt):uploadNew(client,data,buffer,attempt));
+  return ensureFile(client,input,(data,buffer,attempt)=>uploadToLibrary(client,data,buffer,attempt));
 }
 export function compactMedia(r) {
   return {status:r.status,reused:r.reused,reason:r.reason,mediaAssetId:r.mediaAssetId,sha256:r.sha256,bytes:r.bytes,name:r.media.name,mimeType:r.media.mime_type,...r.nodeId?{nodeId:r.nodeId,workflowId:r.workflowId}:{}};
-}
-export async function upload(client,input) {
-  let field=input.referenceField;
-  if(input.referenceTargetNodeId){
-    const {workflow}=await client.workflow(input.workflowId);
-    const target=workflow.graph.nodes.find(n=>n.id===input.referenceTargetNodeId);
-    if(!target)throw new ApiError('not_found','Reference target node not found.');
-    if(!field){
-      const page=await client.page(`/workflows/${input.workflowId}`);
-      const model=page.modelOptions?.find(m=>m.id===target.ai_model_id);
-      const kind=(input.mimeType||({'.png':'image/', '.jpg':'image/', '.jpeg':'image/', '.webp':'image/', '.mp4':'video/', '.webm':'video/', '.mp3':'audio/', '.wav':'audio/', '.m4a':'audio/'})[path.extname(input.filePath).toLowerCase()]||'').split('/')[0];
-      const plural={image:'images',video:'videos',audio:'audios'}[kind];
-      field=[plural,'reference_'+plural].find(k=>model?.input_schema_json?.[k]);
-    }
-    if(!field)throw new ApiError('reference_field_required','Provide referenceField from the target model schema.');
-  }
-  const r=await ensureMedia(client,input);
-  const {workflow}=await client.workflow(input.workflowId);
-  let node=workflow.graph.nodes.find(n=>n.type==='asset'&&Number(n.primary_media_asset_id||n.primary_media?.id||n.output?.media_asset_id)===r.mediaAssetId);
-  if(!node){
-    const added=await client.mutateWorkflow(input.workflowId,'/nodes','POST',{type:'asset',title:r.media.name,position:input.position||{x:100,y:100},size:{width:320,height:240},prompt:'',settings:{},references:[],output:{media_asset_id:r.mediaAssetId,mime_type:r.media.mime_type,size_bytes:r.media.size_bytes,preview_label:r.media.name}});
-    node=added.node||added.workflow.graph.nodes.find(n=>n.type==='asset'&&Number(n.primary_media_asset_id||n.primary_media?.id||n.output?.media_asset_id)===r.mediaAssetId);
-  }
-  if(!node)throw new ApiError('node_uncertain','Media exists but its canvas node could not be confirmed.',{mediaAssetId:r.mediaAssetId});
-  if(input.referenceTargetNodeId){
-    const current=await client.workflow(input.workflowId);
-    if(!current.workflow.graph.edges.some(e=>e.source_node_id===node.id&&e.target_node_id===input.referenceTargetNodeId&&e.target_handle===`in:${field}`))await client.mutateWorkflow(input.workflowId,'/edges','POST',{source_node_id:node.id,target_node_id:input.referenceTargetNodeId,source_handle:'out:'+r.media.mime_type.split('/')[0],target_handle:'in:'+field,type:'derived_from',metadata:{created_from:'mcp',reference_field:field}});
-  }
-  return {...compactMedia(r),workflowId:input.workflowId,nodeId:node.id,asset:{id:r.mediaAssetId,name:r.media.name},node:{id:node.id,status:node.status,primary_media_asset_id:r.mediaAssetId}};
 }

@@ -8,7 +8,7 @@ import {root,dataDir,accounts,clientFor,closeClients,ApiError} from '../src/clie
 import {accountName,accountSettings,configureAccount} from '../src/accounts.js';
 import {browserLogin,captureBrowserSession,closeAuthBrowsers} from '../src/browser-auth.js';
 import {mcpConfig,mcpServer,entryPoint} from '../src/setup-config.js';
-import {installedClients,addToClient} from '../src/clients.js';
+import {installedClients,addToClient,hasClaudeCode,addToClaudeCode} from '../src/clients.js';
 import {currentVersion,checkForUpdate,applyUpdate} from '../src/update.js';
 const cli=`node "${entryPoint()}"`;
 import {callBroker} from '../src/auth-broker.js';
@@ -20,7 +20,7 @@ const help=`Neurover MCP
   lock ACCOUNT       Совместимость: удалить ключ прежнего файла из памяти
   accounts           Показать аккаунты и режимы, без паролей
   config             Показать настройки подключения MCP
-  connect            Добавить Neurover в Claude Desktop, Cursor, Windsurf
+  connect            Добавить Neurover в Claude, Codex, Cursor, Windsurf
   update             Проверить и установить новую версию
   version            Показать установленную версию
   install-browser    Установить Chromium для ручного входа
@@ -70,17 +70,17 @@ async function signIn(c){
  return result;
 }
 async function connectClients(){
- const found=installedClients(),entry=mcpServer();
+ const entry=mcpServer();
+ const found=[...installedClients().map(c=>({name:c.name,add:()=>addToClient(c.file,entry)})),...hasClaudeCode()?[{name:'Claude Code',add:()=>addToClaudeCode(entry)}]:[]];
  console.log('\nПодключение к AI-приложениям');
  for(const c of found){
   const answer=(await ask(`Добавить Neurover в ${c.name}? [Д/н]: `)).trim().toLowerCase();
   if(answer&&!['д','да','y','yes'].includes(answer)){console.log(`  ${c.name}: пропущено.`);continue;}
-  try{const r=await addToClient(c.file,entry);console.log(`  ${c.name}: ${r.status==='unchanged'?'уже подключено':'подключено'}${r.backup?`; прежние настройки сохранены в ${r.backup}`:''}.`);}
+  try{const r=await c.add();console.log(`  ${c.name}: ${r.status==='unchanged'?'уже подключено':'подключено'}${r.backup?`; прежние настройки сохранены в ${r.backup}`:''}.`);}
   catch(e){console.log(`  ${c.name}: ${e.message}`);}
  }
- if(!found.length)console.log('Claude Desktop, Cursor и Windsurf на этом компьютере не найдены.');
+ if(!found.length)console.log('Claude Desktop, Claude Code, Codex, Cursor и Windsurf на этом компьютере не найдены.');
  console.log(`\nДругие приложения: добавьте вручную этот блок в их настройки MCP:\n${JSON.stringify(mcpConfig(),null,2)}`);
- console.log(`Claude Code: claude mcp add neurover --scope user -e NEUROVER_DATA_DIR="${dataDir}" -- "${process.execPath}" "${entryPoint()}" start`);
  console.log('\nГотово. Полностью закройте и снова откройте приложение, и Neurover появится в его инструментах.');
 }
 async function run(){

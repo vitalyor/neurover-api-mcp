@@ -141,3 +141,30 @@ test('update notice is attached to exactly one tool result per session',async()=
  const quiet=(await import('../src/update.js')).updateNotifier(async()=>({updateAvailable:false}));await new Promise(r=>setImmediate(r));
  assert.equal(quiet({ok:1}).updateAvailable,undefined);
 });
+
+test('Codex config.toml gets its own section; other servers and settings stay',async t=>{
+ const dir=await temp(t),file=path.join(dir,'config.toml');
+ const before='model = "gpt-5"\n\n[mcp_servers.other]\ncommand = "other"\n\n[mcp_servers.other.env]\nKEY = "v"\n';
+ await writeFile(file,before);
+ const entry={command:'C:\\Program Files\\nodejs\\node.exe',args:['C:\\Users\\u\\NeuroverMCP\\app\\neurover.mjs','start'],env:{NEUROVER_DATA_DIR:'C:\\Users\\u\\NeuroverMCP'}};
+ const r=await addToClient(file,entry);assert.equal(r.status,'added');
+ const after=await readFile(file,'utf8');
+ assert.ok(after.startsWith(before),'existing content is untouched');
+ assert.ok(after.includes('[mcp_servers.neurover]\ncommand = "C:\\\\Program Files\\\\nodejs\\\\node.exe"'),'Windows paths are escaped as TOML basic strings');
+ assert.ok(after.includes('[mcp_servers.neurover.env]\nNEUROVER_DATA_DIR = '));
+ assert.equal(await readFile(r.backup,'utf8'),before);
+ assert.equal((await addToClient(file,entry)).status,'unchanged');
+});
+
+test('Codex: an existing neurover section is replaced in place, later sections kept',async t=>{
+ const dir=await temp(t),file=path.join(dir,'config.toml');
+ await writeFile(file,'[mcp_servers.neurover]\ncommand = "old"\nargs = []\n\n[mcp_servers.neurover.env]\nX = "1"\n\n[mcp_servers.after]\ncommand = "keep"\n');
+ const r=await addToClient(file,{command:'node',args:['/app/neurover.mjs','start'],env:{NEUROVER_DATA_DIR:'/d'}});
+ assert.equal(r.status,'replaced');
+ const after=await readFile(file,'utf8');
+ assert.ok(!after.includes('"old"')&&!after.includes('X = "1"'),'old block and its env are gone');
+ assert.equal(after.match(/\[mcp_servers\.neurover\]/g).length,1);
+ assert.ok(after.includes('[mcp_servers.after]\ncommand = "keep"'));
+ const fresh=path.join(dir,'new.toml');await addToClient(fresh,{command:'node',args:['a']});
+ assert.equal(await readFile(fresh,'utf8'),'[mcp_servers.neurover]\ncommand = "node"\nargs = ["a"]\nstartup_timeout_sec = 20\ntool_timeout_sec = 120\n');
+});
