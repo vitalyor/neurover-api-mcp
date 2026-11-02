@@ -4,7 +4,7 @@ import http from 'node:http';
 import assert from 'node:assert/strict';
 import {mkdir,rm} from 'node:fs/promises';
 import path from 'node:path';
-import {createCleanupWeb,requestedRange} from '../src/cleanup-web.js';
+import {createCleanupWeb,requestedRange,stopWhenIdle} from '../src/cleanup-web.js';
 import {ApiError,root} from '../src/client.js';
 const id='11111111-1111-4111-8111-111111111111',groupId='aaaaaaaaaaaa',token='a'.repeat(64);
 const asset=n=>({id:n,name:'Clip '+n,media_type:'audio',mime_type:'audio/mpeg',size_bytes:8,usages:[],blockers:[]});
@@ -130,4 +130,34 @@ test('closing media playback aborts the upstream stream instead of downloading i
  const r=await fetch(w.base+`/api/jobs/${id}/media/1`);const reader=r.body.getReader();await reader.read();await reader.cancel();
  for(let n=0;n<40&&!aborted;n++)await new Promise(resolve=>setTimeout(resolve,5));
  assert.equal(aborted,true);assert.ok(pulls<100);
+});
+
+async function idleServer(t,handler=(req,res)=>res.end('ok')){
+ const server=http.createServer(handler);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ let idleAt=null;const timer=stopWhenIdle(server,{idleMs:300,checkMs:10,onIdle:()=>{idleAt=Date.now();}});
+ t.after(()=>{clearInterval(timer);server.closeAllConnections();server.close();});
+ return {base:`http://127.0.0.1:${server.address().port}`,idle:()=>idleAt};
+}
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+test('idle gallery shuts down after the configured quiet period',async t=>{
+ const s=await idleServer(t);await fetch(s.base);
+ await pause(100);assert.equal(s.idle(),null);
+ for(let n=0;n<100&&!s.idle();n++)await pause(10);
+ assert.ok(s.idle(),'server should report idle after quiet period');
+});
+test('an open page polling the gallery keeps it alive',async t=>{
+ const s=await idleServer(t);
+ for(let n=0;n<12;n++){await fetch(s.base);await pause(50);}
+ assert.equal(s.idle(),null,"polling every 50 ms must keep a 300 ms idle timer from firing");
+ for(let n=0;n<100&&!s.idle();n++)await pause(10);
+ assert.ok(s.idle(),'idle timer fires once polling stops');
+});
+test('a long request in flight blocks idle shutdown until it finishes',async t=>{
+ let release;const held=new Promise(resolve=>release=resolve);
+ const s=await idleServer(t,async(req,res)=>{await held;res.end('done');});
+ const pending=fetch(s.base);await pause(600);
+ assert.equal(s.idle(),null,'shutdown must wait for the open request');
+ release();await (await pending).text();
+ for(let n=0;n<100&&!s.idle();n++)await pause(10);
+ assert.ok(s.idle());
 });

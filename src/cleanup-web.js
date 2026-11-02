@@ -146,10 +146,14 @@ export async function runCleanupWeb({defaultJobId,port=8876,idleMs=Number(proces
  await privateJson(path.join(dataDir,'cleanup-web.json'),{pid:process.pid,port:server.address().port,defaultJobId,startedAt:new Date().toISOString()});
  // Idle shutdown: the open gallery polls every 2.5–10 s, so 10 min without any request means no page is open.
  // The next ensureCleanupWeb() call starts a fresh server. Background workers are separate processes and are not affected.
- if(idleMs>0){let last=Date.now(),inflight=0;
-  server.on('request',(req,res)=>{last=Date.now();inflight++;res.on('close',()=>{inflight--;last=Date.now();});});
-  const timer=setInterval(()=>{if(inflight===0&&Date.now()-last>idleMs){clearInterval(timer);server.close(()=>process.exit(0));server.closeAllConnections?.();setTimeout(()=>process.exit(0),3000).unref();}},60000);timer.unref();}
+ if(idleMs>0)stopWhenIdle(server,{idleMs,onIdle:()=>{server.close(()=>process.exit(0));server.closeAllConnections?.();setTimeout(()=>process.exit(0),3000).unref();}});
  return server;
+}
+export function stopWhenIdle(server,{idleMs,checkMs=60000,onIdle}){
+ let last=Date.now(),inflight=0;
+ server.on('request',(req,res)=>{last=Date.now();inflight++;res.on('close',()=>{inflight--;last=Date.now();});});
+ const timer=setInterval(()=>{if(inflight===0&&Date.now()-last>idleMs){clearInterval(timer);onIdle();}},checkMs);timer.unref();
+ return timer;
 }
 export async function ensureCleanupWeb(jobId,{port=8876}={}){
  await loadCleanup(jobId);const url=`http://127.0.0.1:${port}`;
