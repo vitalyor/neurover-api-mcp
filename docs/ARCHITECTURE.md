@@ -18,6 +18,8 @@ Choose the smallest relevant source/test slice here. [Repair](REPAIR.md) starts 
 | `src/accounts.js`, `src/vault.js` | Account schema, manual/native vault modes, pending failures, no plaintext fallback | CLI, client, auth helper; accounts tests |
 | `src/auth-broker.js` | Private authenticated Unix socket / Windows pipe, memory-only unlock keys, login without returning passwords | CLI unlock/lock, encrypted client login; isolated broker tests |
 | `bin/neurover.mjs`, `src/setup-config.js` | Local setup/settings/login/unlock/lock, masked input, MCP connection output | User terminal and setup tool; CLI/package checks |
+| `src/update.js`, `scripts/launcher.mjs`, `scripts/install.mjs`, `get.sh`, `get.ps1` | Release check (GitHub tags, weekly, one notice per session), managed install `<dataDir>/app/versions/<v>` behind stable `app/neurover.mjs`, git fast-forward update, refusal while cleanup workers run. Built-ins only | Server startup, `neurover_update_*` tools, CLI `update`, one-line installers; update tests |
+| `src/clients.js` | Adds `mcpServers.neurover` to Claude Desktop/Cursor/Windsurf configs with `.bak-neurover` backup; invalid JSON untouched | CLI `setup`/`connect`; update tests |
 | `scripts/bundle.mjs`, `scripts/test.mjs` | Explicit release allowlist + shrinkwrap, isolated test data/legacy paths | Release and CI; staging/install checks |
 | `src/browser-auth.js` | Isolated visible login, authenticated session capture and window lifecycle | server auth tools; real CAPTCHA untested |
 | `src/routes.json` | Discovered route names/methods/paths, not verified payload definitions | server catalog/read/write; research evidence |

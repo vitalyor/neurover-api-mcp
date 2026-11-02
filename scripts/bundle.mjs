@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {root} from '../src/paths.js';
-export const releaseFiles=['src','bin','test','scripts/test.mjs','scripts/bundle.mjs','scripts/check-readonly.mjs','package.json','package-lock.json','LICENSE','install.sh','install.command','install.cmd','docs/INSTALL.md','docs/PRIVACY.md'];
+export const releaseFiles=['src','bin','test','scripts/test.mjs','scripts/bundle.mjs','scripts/check-readonly.mjs','scripts/install.mjs','scripts/launcher.mjs','get.sh','get.ps1','package.json','package-lock.json','LICENSE','install.sh','install.command','install.cmd','docs/INSTALL.md','docs/PRIVACY.md'];
 async function rejectLinks(target){const s=await lstat(target);if(s.isSymbolicLink())throw Error('Release inputs must not contain symlinks.');if(s.isDirectory())for(const name of await readdir(target))await rejectLinks(path.join(target,name));}
 export async function stageRelease(destination){
  await mkdir(destination,{recursive:true});

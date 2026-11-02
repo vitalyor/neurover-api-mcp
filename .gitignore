@@ -10,6 +10,8 @@
 !/install.sh
 !/install.command
 !/install.cmd
+!/get.sh
+!/get.ps1
 !/bin/
 !/src/
 !/test/
@@ -19,6 +21,8 @@
 !/scripts/test.mjs
 !/scripts/bundle.mjs
 !/scripts/check-readonly.mjs
+!/scripts/install.mjs
+!/scripts/launcher.mjs
 !/scripts/gallery-fixtures.mjs
 !/scripts/gallery-live-fixture.mjs
 

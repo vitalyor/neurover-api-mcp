@@ -13,8 +13,9 @@ import {library} from './media-dedup.js';
 import {startCleanup,startVerification,pauseCleanup,nextCleanup,startScan,deleteExact,loadCleanup,scanCleanup,reviewCleanup,verifyCleanup,approveCleanup,approveFiles,stepCleanup,cleanupStatus,cancelCleanup} from './cleanup.js';
 import {ensureCleanupWeb} from './cleanup-web.js';
 import {accountSettings,accountName} from './accounts.js';
-import {mcpConfig} from './setup-config.js';
-const server=new McpServer({name:'neurover-api',version:'0.8.1'});
+import {mcpConfig,entryPoint} from './setup-config.js';
+import {currentVersion,checkForUpdate,applyUpdate,installLayout,updateNotifier} from './update.js';
+const server=new McpServer({name:'neurover-api',version:currentVersion});
 const routes=JSON.parse(await readFile(new URL('./routes.json',import.meta.url),'utf8'));
 const account=z.string().optional();const id=z.number().int().positive();
 const wf={account,workflowId:id};const node={...wf,nodeId:id};
@@ -97,19 +98,23 @@ const DESCRIPTIONS={
  neurover_api_read:'Прочитать любой GET-маршрут сайта. Только если нет отдельного инструмента.',
  neurover_api_write:'Изменяющий запрос к маршруту сайта. Только если нет отдельного инструмента; платные запуски — только через prepare/submit.'
 };
+// Weekly update check in the background; its notice rides on one tool result per session, never on every call.
+const withNotice=updateNotifier();
 function tool(name,description,schema,fn,{readOnly=true,destructive=false,noAccount=false}={}){
  description=DESCRIPTIONS[name]||description;
  server.registerTool(name,{description,inputSchema:schema,annotations:{readOnlyHint:readOnly,destructiveHint:destructive,openWorldHint:true}},async input=>{
-  try{if(noAccount)return result(await fn(input));const selected=await selectAccount(input.account);return result(await serial(selected,async()=>fn(input,await clientFor(selected))));}
+  try{if(noAccount)return result(withNotice(await fn(input)));const selected=await selectAccount(input.account);return result(withNotice(await serial(selected,async()=>fn(input,await clientFor(selected)))));}
   catch(e){return result({status:e.code||'error',message:e instanceof ApiError?e.message:'Operation failed; see local diagnostics.',...(e.details||{})},true);}
  });
 }
 const query=o=>{const p=new URLSearchParams();for(const[k,v]of Object.entries(o))if(v!==undefined&&v!==null)p.set(k,String(v));return p.size?'?'+p:'';};
 tool('neurover_accounts','Настроенные аккаунты; пароли не возвращаются.',{},()=>accounts().then(accounts=>({accounts})),{noAccount:true});
 tool('neurover_login','Войти через системное хранилище аккаунта; ОС может запросить разрешение или разблокировку. Для ручного входа локальный login/browser_login. Пароли не передавать в чат.',{account},(_,c)=>c.login(),{readOnly:false});
-tool('neurover_account_setup','Инструкция безопасного добавления аккаунта или изменения режима входа в локальном терминале. Не принимает паролей.',{account},async i=>{if(i.account)accountName(i.account);return {command:process.execPath,args:[root+'/bin/neurover.mjs',i.account?'settings':'setup',...i.account?[i.account]:[]],connection:mcpConfig(),message:'Run in your own terminal. Never send passwords to chat. settings switches between manual sign-in and system credential storage; OS permission/unlock prompts may appear. No plaintext fallback.'};},{noAccount:true});
+tool('neurover_account_setup','Инструкция безопасного добавления аккаунта или изменения режима входа в локальном терминале. Не принимает паролей.',{account},async i=>{if(i.account)accountName(i.account);return {command:process.execPath,args:[entryPoint(),i.account?'settings':'setup',...i.account?[i.account]:[]],connection:mcpConfig(),message:'Run in your own terminal. Never send passwords to chat. settings switches between manual sign-in and system credential storage; OS permission/unlock prompts may appear. No plaintext fallback.'};},{noAccount:true});
 tool('neurover_account_settings','Режим входа и предупреждение об удалении пароля; секреты не возвращаются.',{account},async(i,c)=>{const config=await accountSettings(c.account);return {account:c.account,mode:config?.mode||'setup_required',passwordRemovalPending:!!config?.passwordRemovalPending};});
 tool('neurover_browser_login','Резервный вход через отдельное видимое окно, если HTTP-вход требует CAPTCHA. После входа окно закрывается и операции снова идут по HTTP.',{account,finish:z.boolean().default(false)},(i,c)=>i.finish?captureBrowserSession(c):browserLogin(c),{readOnly:false});
+tool('neurover_update_check','Проверить, вышла ли новая версия Neurover MCP (запрос к GitHub). Сам MCP проверяет не чаще раза в неделю; этот инструмент проверяет сейчас. Ничего не меняет.',{},async()=>{const r=await checkForUpdate({force:true});return {...r,install:installLayout().kind,next:r.updateAvailable?'Сообщите пользователю версию и спросите, обновить ли. При согласии вызовите neurover_update_apply с confirm=true.':'Установлена последняя версия.'};},{noAccount:true});
+tool('neurover_update_apply','Обновить Neurover MCP до последней версии с GitHub. Вызывать только после явного согласия пользователя. Не запускается, пока идёт фоновая очистка. После успеха пользователь должен полностью закрыть и снова открыть MCP-клиент.',{confirm:z.literal(true)},()=>applyUpdate(),{readOnly:false,noAccount:true});
 tool('neurover_auth_status','Проверить HTTP-сессию без запуска браузера.',{account},(_,c)=>c.authStatus());
 tool('neurover_logout','Завершить только сессию нового MCP.',{account},async(_,c)=>{const r=await c.http('/logout',{method:'POST',data:{},allowAnonymous:true});c.csrf=null;return {status:'logged_out'};},{readOnly:false});
 tool('neurover_workflows','Список полотен с поиском и пагинацией.',{account,search:z.string().optional(),page:id.optional()},(i,c)=>c.http('/workflows'+query({search:i.search,page:i.page})));
