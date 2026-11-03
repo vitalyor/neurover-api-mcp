@@ -34,9 +34,12 @@ export async function accountSettings(name,directory=dataDir){
 export async function readCredential(name,directory=dataDir){
  accountName(name);let value;try{value=await readJson(path.join(directory,'accounts',name,'credential.json'));}catch{throw new ApiError('credentials_unavailable','No readable credential file. Open local settings or sign in manually.');}return validateCredential(value);
 }
-export async function credentialsFor(name,{settings=accountSettings,directory=dataDir,vault=vaultEntry}={}){
+export const passwordEnvName=name=>'NEUROVER_PASSWORD_'+name.toUpperCase().replace(/-/g,'_');
+export async function credentialsFor(name,{settings=accountSettings,directory=dataDir,vault=vaultEntry,env=process.env}={}){
  const config=await settings(name);
  if(!config)throw new ApiError('account_setup_required','Add this account using the local setup command.');
+ // Fourth mode for hosts without a keyring (containers, servers): the password comes from the host's own secret settings and overrides the stored mode.
+ const fromEnv=env[passwordEnvName(name)];if(fromEnv)return {email:config.email,password:fromEnv};
  if(config.mode==='manual')throw new ApiError('manual_login_required','This account uses manual sign-in. Run the local login command or open the sign-in browser.');
  if(config.mode==='vault'){
   const password=await vaultOperation(vault,name,config.email,'getPassword');

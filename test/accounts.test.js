@@ -106,3 +106,10 @@ test('share staging includes source and tests but excludes personal state, resea
  assert.ok(files.includes('src/client.js'));assert.ok(files.includes('test/accounts.test.js'));assert.ok(files.includes('package-lock.json'));assert.ok(files.includes('npm-shrinkwrap.json'));assert.ok(files.every(p=>!/(^|\/)(\.data|research|node_modules|browser-profile|dist)(\/|$)|session\.json|report\.html|\.log$/.test(p)));
  assert.ok(!(await readFile(path.join(stage,'README.md'),'utf8')).includes(os.homedir()));
 });
+
+test('a password from NEUROVER_PASSWORD_<ACCOUNT> signs in any configured account; email still comes from settings',async t=>{
+ const f=await fixture(t);await configureAccount('lab-main',{email:'user@example.com',mode:'manual'},f);
+ assert.deepEqual(await credentialsFor('lab-main',{...f,env:{NEUROVER_PASSWORD_LAB_MAIN:'env-secret'}}),{email:'user@example.com',password:'env-secret'});
+ await assert.rejects(credentialsFor('lab-main',{...f,env:{NEUROVER_PASSWORD_LAB_MAIN:''}}),{code:'manual_login_required'},'an empty variable is ignored');
+ await assert.rejects(credentialsFor('other',{...f,env:{NEUROVER_PASSWORD_OTHER:'x'}}),{code:'account_setup_required'},'the variable alone does not create an account');
+});
