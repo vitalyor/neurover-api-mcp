@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {root,dataDir,accounts,clientFor,closeClients,ApiError} from '../src/client.js';
 import {accountName,accountSettings,configureAccount} from '../src/accounts.js';
 import {browserLogin,captureBrowserSession,closeAuthBrowsers} from '../src/browser-auth.js';
-import {mcpConfig,mcpServer,entryPoint,cliCommand} from '../src/setup-config.js';
+import {mcpServer,entryPoint,cliCommand,connectionGuide} from '../src/setup-config.js';
 import {installedClients,addToClient,hasClaudeCode,addToClaudeCode} from '../src/clients.js';
 import {currentVersion,checkForUpdate,applyUpdate} from '../src/update.js';
 const cli=cliCommand();
@@ -48,8 +48,8 @@ ${command==='setup'||command==='settings'?`
        Удобнее при регулярной работе и долгих фоновых заданиях.
 2. Попроси пользователя выполнить в своём терминале и выбрать там этот вариант:
    ${cli} ${command}${name?' '+name:''}
-3. Затем выполни: ${cli} config — и с согласия пользователя добавь
-   показанные command/args/env в настройки его MCP-клиента; клиент нужно перезапустить.`:`
+3. Затем выполни: ${cli} config — там готовые настройки для любого MCP-клиента
+   (Claude, Codex, Cursor, VS Code и др.). С согласия пользователя добавь их; клиент нужно перезапустить.`:`
 Попроси пользователя выполнить в своём терминале:
    ${cli} ${command}${name?' '+name:''}
 Для ручного входа без терминала есть MCP-инструмент neurover_browser_login:
@@ -80,7 +80,7 @@ async function connectClients(){
   catch(e){console.log(`  ${c.name}: ${e.message}`);}
  }
  if(!found.length)console.log('Claude Desktop, Claude Code, Codex, Cursor и Windsurf на этом компьютере не найдены.');
- console.log(`\nДругие приложения: добавьте вручную этот блок в их настройки MCP:\n${JSON.stringify(mcpConfig(),null,2)}`);
+ console.log(`\nДругие приложения: ${cli} config покажет готовые настройки для любого MCP-клиента.`);
  console.log('\nГотово. Полностью закройте и снова откройте приложение, и Neurover появится в его инструментах.');
 }
 async function run(){
@@ -88,7 +88,7 @@ async function run(){
  if(extra.length||name&&!['settings','login','unlock','lock'].includes(command))throw new ApiError('invalid_command','Use --help. Passwords are never accepted in arguments.');
  if(command==='start'){await import('../src/server.js');return;}
  if(['--help','help','-h'].includes(command)){console.log(help);return;}
- if(command==='config'){console.log(JSON.stringify(mcpConfig(),null,2));return;}
+ if(command==='config'){console.log(connectionGuide());return;}
  if(command==='version'){console.log(currentVersion);return;}
  if(command==='update'){
   const r=await checkForUpdate({force:true});
@@ -166,7 +166,7 @@ MCP работает по сессии сайта (cookies). Она сохран
   }finally{password=null;}
   console.log('Вход выполнен, пароль сохранён в системном хранилище. Когда Neurover завершит сессию, MCP войдёт заново сам, если хранилище доступно и ОС разрешает доступ.');
  }
- if(command==='setup')await connectClients();else console.log('\nПодключение к MCP-клиенту:\n'+JSON.stringify(mcpConfig(),null,2));
+ if(command==='setup')await connectClients();else console.log('\nПодключение к MCP-клиенту:\n'+connectionGuide());
 }
 if(globalThis.neuroverLauncher||process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{await run();}catch(error){console.error(`${error.code||'setup_failed'}: ${error instanceof ApiError?error.message:'Setup failed. No credentials are printed; check your local installation and vault.'}`);process.exitCode=1;}

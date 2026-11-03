@@ -41,3 +41,9 @@ test('printed commands name the exact Node that runs MCP, ready for the user’s
  assert.equal(cliCommand('/a b/neurover.mjs',{platform:'darwin',node:'/x y/node'}),'"/x y/node" "/a b/neurover.mjs"');
  assert.equal(cliCommand('C:\\N\\neurover.mjs',{platform:'win32',node:'C:\\N\\node\\node.exe'}),'& "C:\\N\\node\\node.exe" "C:\\N\\neurover.mjs"','PowerShell needs & before a quoted program');
 });
+
+test('connection guide works for any MCP harness: universal fields and the common config shapes',async()=>{
+ const {connectionGuide}=await import('../src/setup-config.js');
+ const g=connectionGuide({command:'/x y/node',args:['/a/neurover.mjs','start'],env:{NEUROVER_DATA_DIR:'/d'}});
+ for(const part of ['type:    stdio','command: /x y/node','"mcpServers"','"servers"','[mcp_servers.neurover]','claude mcp add --scope user neurover -e NEUROVER_DATA_DIR=/d -- "/x y/node" /a/neurover.mjs start','найдите в его документации'])assert.ok(g.includes(part),part);
+});
