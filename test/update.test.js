@@ -128,6 +128,8 @@ test('client config locations per platform',()=>{
  assert.ok(mac.includes('/Users/u/.cursor/mcp.json'));
  const win=knownClients('win32',{APPDATA:'C:\\Users\\u\\AppData\\Roaming'},'C:\\Users\\u').map(c=>c.file);
  assert.ok(win.includes('C:\\Users\\u\\AppData\\Roaming\\Claude\\claude_desktop_config.json'));
+ const store='C:\\Users\\u\\AppData\\Local\\Packages\\Claude_pzs8sxrjxfjjc\\LocalCache\\Roaming\\Claude';
+ assert.equal(knownClients('win32',{},'C:\\Users\\u',dir=>dir===store)[0].file,store+'\\claude_desktop_config.json','Store/MSIX Claude reads its packaged AppData');
  assert.ok(knownClients('linux',{},'/home/u').some(c=>c.file==='/home/u/.config/Claude/claude_desktop_config.json'));
 });
 

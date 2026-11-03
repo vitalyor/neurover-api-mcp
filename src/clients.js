@@ -7,11 +7,13 @@ import {spawnSync} from 'node:child_process';
 import {ApiError} from './errors.js';
 import {retryTransient} from './state.js';
 
-export function knownClients(platform=process.platform,env=process.env,home=os.homedir()){
+export function knownClients(platform=process.platform,env=process.env,home=os.homedir(),exists=existsSync){
  const p=platform==='win32'?path.win32:path.posix;
  const appConfig=platform==='win32'?(env.APPDATA||p.join(home,'AppData','Roaming')):platform==='darwin'?p.join(home,'Library','Application Support'):(env.XDG_CONFIG_HOME||p.join(home,'.config'));
+ // Claude Desktop from the current Windows installer (MSIX) reads AppData redirected into its package folder.
+ const msix=platform==='win32'?p.join(env.LOCALAPPDATA||p.join(home,'AppData','Local'),'Packages','Claude_pzs8sxrjxfjjc','LocalCache','Roaming','Claude'):null;
  return [
-  {name:'Claude Desktop',file:p.join(appConfig,'Claude','claude_desktop_config.json')},
+  {name:'Claude Desktop',file:p.join(msix&&exists(msix)?msix:p.join(appConfig,'Claude'),'claude_desktop_config.json')},
   {name:'Cursor',file:p.join(home,'.cursor','mcp.json')},
   {name:'Windsurf',file:p.join(home,'.codeium','windsurf','mcp_config.json')},
   {name:'Codex',file:p.join(env.CODEX_HOME||p.join(home,'.codex'),'config.toml')}
