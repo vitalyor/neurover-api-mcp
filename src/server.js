@@ -15,6 +15,10 @@ import {ensureCleanupWeb} from './cleanup-web.js';
 import {accountSettings,accountName} from './accounts.js';
 import {mcpConfig,entryPoint,connectionGuide} from './setup-config.js';
 import {currentVersion,checkForUpdate,applyUpdate,installLayout,updateNotifier} from './update.js';
+import {log,errorInfo} from './log.js';
+import {writeDiagnostics} from './diagnostics.js';
+log('start',{node:process.versions.node,platform:process.platform,arch:process.arch,install:installLayout().kind});
+process.on('uncaughtExceptionMonitor',e=>log('crash',errorInfo(e,false)));
 const server=new McpServer({name:'neurover-api',version:currentVersion});
 const routes=JSON.parse(await readFile(new URL('./routes.json',import.meta.url),'utf8'));
 const account=z.string().optional();const id=z.number().int().positive();
@@ -105,8 +109,10 @@ const withNotice=updateNotifier();
 function tool(name,description,schema,fn,{readOnly=true,destructive=false,noAccount=false}={}){
  description=DESCRIPTIONS[name]||description;
  server.registerTool(name,{description,inputSchema:schema,annotations:{readOnlyHint:readOnly,destructiveHint:destructive,openWorldHint:true}},async input=>{
-  try{if(noAccount)return result(withNotice(await fn(input)));const selected=await selectAccount(input.account);return result(withNotice(await serial(selected,async()=>fn(input,await clientFor(selected)))));}
-  catch(e){return result({status:e.code||'error',message:e instanceof ApiError?e.message:'Operation failed; see local diagnostics.',...(e.details||{})},true);}
+  // The log keeps the tool name, argument names and timing; argument values (prompts, paths, IDs) stay out of it.
+  const started=Date.now(),keys=Object.keys(input||{});
+  try{const v=noAccount?await fn(input):await (async()=>{const selected=await selectAccount(input.account);return serial(selected,async()=>fn(input,await clientFor(selected)));})();log('tool',{name,keys,ms:Date.now()-started,ok:true});return result(withNotice(v));}
+  catch(e){const expected=e instanceof ApiError;log('tool',{name,keys,ms:Date.now()-started,ok:false,...errorInfo(e,expected)});return result({status:e.code||'error',message:expected?e.message:'Operation failed. Details are in the local log; neurover_diagnostics saves a report the user can send to the author.',...(e.details||{})},true);}
  });
 }
 const query=o=>{const p=new URLSearchParams();for(const[k,v]of Object.entries(o))if(v!==undefined&&v!==null)p.set(k,String(v));return p.size?'?'+p:'';};
@@ -117,6 +123,7 @@ tool('neurover_account_settings','Режим входа и предупрежд�
 tool('neurover_browser_login','Резервный вход через отдельное видимое окно, если HTTP-вход требует CAPTCHA. После входа окно закрывается и операции снова идут по HTTP.',{account,finish:z.boolean().default(false)},(i,c)=>i.finish?captureBrowserSession(c):browserLogin(c),{readOnly:false});
 tool('neurover_update_check','Проверить, вышла ли новая версия Neurover MCP (запрос к GitHub). Сам MCP проверяет не чаще раза в неделю; этот инструмент проверяет сейчас. Ничего не меняет.',{},async()=>{const r=await checkForUpdate({force:true});return {...r,install:installLayout().kind,next:r.updateAvailable?'Сообщите пользователю версию и спросите, обновить ли. При согласии вызовите neurover_update_apply с confirm=true.':'Установлена последняя версия.'};},{noAccount:true});
 tool('neurover_update_apply','Обновить Neurover MCP до последней версии с GitHub. Вызывать только после явного согласия пользователя. Не запускается, пока идёт фоновая очистка. После успеха пользователь должен полностью закрыть и снова открыть MCP-клиент.',{confirm:z.literal(true)},()=>applyUpdate(),{readOnly:false,noAccount:true});
+tool('neurover_diagnostics','Сохранить отчёт для автора MCP, если что-то не работает: версия, система, режимы входа, подключение приложений и журнал последних действий. Без email, паролей, cookies и промптов. Возвращает путь к файлу в Загрузках; пользователь отправляет его автору сам.',{},()=>writeDiagnostics(),{readOnly:false,noAccount:true});
 tool('neurover_auth_status','Проверить HTTP-сессию без запуска браузера.',{account},(_,c)=>c.authStatus());
 tool('neurover_logout','Завершить только сессию нового MCP.',{account},async(_,c)=>{const r=await c.http('/logout',{method:'POST',data:{},allowAnonymous:true});c.csrf=null;return {status:'logged_out'};},{readOnly:false});
 tool('neurover_workflows','Список полотен с поиском и пагинацией.',{account,search:z.string().optional(),page:id.optional()},(i,c)=>c.http('/workflows'+query({search:i.search,page:i.page})));

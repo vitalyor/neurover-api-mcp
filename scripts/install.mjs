@@ -5,12 +5,14 @@ import path from 'node:path';
 import {latestVersion,installManaged,managedAppDir,repository} from '../src/update.js';
 import {dataDir} from '../src/paths.js';
 import {cliCommand} from '../src/setup-config.js';
+import {log,errorInfo} from '../src/log.js';
 
 const app=managedAppDir();
 const version=await latestVersion().catch(()=>null);
 if(!version){console.error(`Не удалось узнать последнюю версию на GitHub (${repository}). Проверьте интернет и запустите команду снова.`);process.exit(1);}
 console.log(`\nУстанавливаю Neurover MCP ${version}\nПапка: ${app}\n`);
-await installManaged(app,version);
+log('install',{version,node:process.versions.node,platform:process.platform,tty:!!process.stdin.isTTY});
+try{await installManaged(app,version);}catch(e){log('install_error',errorInfo(e,false));throw e;}
 
 const launcher=path.join(app,'neurover.mjs');
 const step=(...args)=>spawnSync(process.execPath,[launcher,...args],{stdio:'inherit'}).status;

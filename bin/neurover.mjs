@@ -12,6 +12,8 @@ import {installedClients,addToClient,hasClaudeCode,addToClaudeCode,knownClients,
 import {currentVersion,checkForUpdate,applyUpdate,installLayout,runningWorkers} from '../src/update.js';
 import {vaultEntry,vaultOperation} from '../src/vault.js';
 import {rm} from 'node:fs/promises';
+import {log,errorInfo} from '../src/log.js';
+import {writeDiagnostics} from '../src/diagnostics.js';
 const cli=cliCommand();
 import {callBroker} from '../src/auth-broker.js';
 const help=`Neurover MCP
@@ -27,6 +29,7 @@ const help=`Neurover MCP
   version            Показать установленную версию
   install-browser    Установить Chromium для ручного входа
   doctor             Проверить Node, папку данных и наличие браузера
+  logs               Сохранить отчёт для автора, если что-то не работает
   uninstall          Удалить всё: пароли, подключения к приложениям, программу и данные
   start              Запустить MCP через stdio (по умолчанию)
 Пароли вводятся только в локальном терминале или на neurover.io.
@@ -125,6 +128,7 @@ async function run(){
  if(command==='start'){await import('../src/server.js');return;}
  if(['--help','help','-h'].includes(command)){console.log(help);return;}
  if(command==='config'){console.log(connectionGuide());return;}
+ if(command==='logs'){const r=await writeDiagnostics();console.log(`Отчёт сохранён:\n  ${r.file}\nОтправьте этот файл автору. Email, пароли, cookies и промпты в него не попадают; перед отправкой его можно открыть и просмотреть.`);return;}
  if(command==='version'){console.log(currentVersion);return;}
  if(command==='update'){
   const r=await checkForUpdate({force:true});
@@ -206,6 +210,6 @@ MCP работает по сессии сайта (cookies). Она сохран
  if(command==='setup')await connectClients();else console.log('\nПодключение к MCP-клиенту:\n'+connectionGuide());
 }
 if(globalThis.neuroverLauncher||process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{await run();}catch(error){console.error(`${error.code||'setup_failed'}: ${error instanceof ApiError?error.message:['EPERM','EACCES'].includes(error.code)?noWrite(error):'Setup failed. No credentials are printed; check your local installation and vault.'}`);process.exitCode=1;}
+ try{if(!['start','logs'].includes(process.argv[2]||'start'))log('cli',{command:process.argv[2]});await run();}catch(error){log('cli_error',{command:process.argv[2],...errorInfo(error,error instanceof ApiError)});console.error(`${error.code||'setup_failed'}: ${error instanceof ApiError?error.message:['EPERM','EACCES'].includes(error.code)?noWrite(error):'Setup failed. No credentials are printed; check your local installation and vault.'}`);process.exitCode=1;}
  finally{if((process.argv[2]||'start')!=='start'){await closeAuthBrowsers();await closeClients();}}
 }
