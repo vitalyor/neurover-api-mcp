@@ -4,7 +4,7 @@ import {readFileSync,existsSync} from 'node:fs';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {root,dataDir} from './paths.js';
-import {privateJson,readJson} from './state.js';
+import {privateJson,readJson,retryTransient} from './state.js';
 import {ApiError} from './errors.js';
 
 const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
@@ -86,12 +86,12 @@ export async function installManaged(app,version,{fetchSource=downloadSource,ins
   try{
    await fetchSource(version,partial);
    if(JSON.parse(await readFile(path.join(partial,'package.json'),'utf8')).version!==version)throw new ApiError('update_version_mismatch',`Downloaded files are not v${version}.`);
-   await installDeps(partial);await rename(partial,target);
+   await installDeps(partial);await retryTransient(()=>rename(partial,target));
   }catch(e){await rm(partial,{recursive:true,force:true});throw e;}
  }
  await cp(path.join(target,'scripts/launcher.mjs'),path.join(app,'neurover.mjs'));
  const previous=await readJson(path.join(app,'current.json')).then(v=>v.version).catch(()=>null);
- await writeFile(path.join(app,'current.json.tmp'),JSON.stringify({version,previous},null,1));await rename(path.join(app,'current.json.tmp'),path.join(app,'current.json'));
+ await writeFile(path.join(app,'current.json.tmp'),JSON.stringify({version,previous},null,1));await retryTransient(()=>rename(path.join(app,'current.json.tmp'),path.join(app,'current.json')));
  // ponytail: keep current + previous only; a worker still running from an older folder keeps its loaded code.
  for(const name of await readdir(versions))if(name!==version&&name!==previous&&!name.includes('.partial-'))await rm(path.join(versions,name),{recursive:true,force:true});
  return {version,previous,dir:target};

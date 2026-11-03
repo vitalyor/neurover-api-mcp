@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {spawnSync} from 'node:child_process';
 import {ApiError} from './errors.js';
+import {retryTransient} from './state.js';
 
 export function knownClients(platform=process.platform,env=process.env,home=os.homedir()){
  const p=platform==='win32'?path.win32:path.posix;
@@ -22,7 +23,7 @@ export const installedClients=(list=knownClients())=>list.filter(c=>existsSync(p
 async function save(file,text,content){
  const backup=text===null?null:file+'.bak-neurover';
  if(backup)await copyFile(file,backup);
- const tmp=file+'.tmp-neurover';await writeFile(tmp,content);await rename(tmp,file);
+ const tmp=file+'.tmp-neurover';await writeFile(tmp,content);await retryTransient(()=>rename(tmp,file));
  return backup;
 }
 

@@ -27,3 +27,11 @@ test('only our own Claude Code entry may be replaced',()=>{
  assert.equal(isOwnEntry('neurover:\n  Command: echo\n  Args: other'),false);
  assert.equal(isOwnEntry(''),false);
 });
+
+test('Windows file locks are retried briefly; real errors are not',async()=>{
+ const {retryTransient}=await import('../src/state.js');
+ let calls=0;const locked=async()=>{calls++;if(calls<3)throw Object.assign(new Error('locked'),{code:'EPERM'});return 'ok';};
+ assert.equal(await retryTransient(locked,{delayMs:1}),'ok');assert.equal(calls,3);
+ let missing=0;await assert.rejects(retryTransient(async()=>{missing++;throw Object.assign(new Error('gone'),{code:'ENOENT'});},{delayMs:1}),e=>e.code==='ENOENT');assert.equal(missing,1,'non-transient errors are not retried');
+ let stuck=0;await assert.rejects(retryTransient(async()=>{stuck++;throw Object.assign(new Error('busy'),{code:'EBUSY'});},{attempts:4,delayMs:1}),e=>e.code==='EBUSY');assert.equal(stuck,4,'gives up after the limit');
+});
