@@ -2,6 +2,9 @@ import {chromium,request} from 'playwright';
 import {origin,ApiError,parsePage} from './client.js';
 import {accountSettings,credentialsFor,verifyAccountIdentity} from './accounts.js';
 const windows=new Map();
+// Credentials are typed only into a page that is still on neurover.io (a redirect elsewhere must not receive them).
+export const onNeurover=url=>{try{return new URL(url).origin===origin;}catch{return false;}};
+const leftSite=c=>({status:'needs_attention',account:c.account,message:'The sign-in window is no longer on neurover.io; nothing was typed. Sign in directly on neurover.io in that window, then capture the session.'});
 export async function captureBrowserSession(c){
  const browser=windows.get(c.account);if(!browser)throw new ApiError('browser_closed','Open the sign-in browser first.');
  const state=await browser.context.storageState();
@@ -26,9 +29,11 @@ export async function browserLogin(c){
   if(await page.getByRole('button',{name:'Войти',exact:true}).first().isVisible().catch(()=>false))await page.getByRole('button',{name:'Войти',exact:true}).first().click();else return captureBrowserSession(c);
  }
  const config=await accountSettings(c.account);
+ if(!onNeurover(page.url()))return leftSite(c);
  if(config?.email)await page.getByRole('textbox',{name:'Email'}).fill(config.email);
  if(!config||!['vault','legacy'].includes(config.mode))return {status:'needs_attention',account:c.account,message:'Sign in directly in the browser, then capture the session. Do not send your password in chat.'};
  let {email,password}=await credentialsFor(c.account);
+ if(!onNeurover(page.url())){password=null;return leftSite(c);}
  await page.getByRole('textbox',{name:'Email'}).fill(email);await page.locator('input[type="password"]').fill(password);password=null;
  await page.getByRole('button',{name:'Войти',exact:true}).last().click();
  await page.locator('input[type="password"]').waitFor({state:'hidden',timeout:15000}).catch(()=>{});

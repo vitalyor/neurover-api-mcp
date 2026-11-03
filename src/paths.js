@@ -12,4 +12,10 @@ const override=process.env.NEUROVER_DATA_DIR;
 if(override&&!path.isAbsolute(override))throw Error('NEUROVER_DATA_DIR must be an absolute path.');
 // Preserve this existing installation; clean distributions use the user's data folder.
 export const dataDir=override||(existsSync(path.join(root,'.data'))?path.join(root,'.data'):userDataDirectory());
-export const sourceDir=process.env.NEUROVER_SOURCE_DIR||path.resolve(root,'../neurover-io-mcp');
+// Compatibility with the author's earlier browser MCP. Only an old in-place install (data in <code>/.data) or an explicit
+// NEUROVER_SOURCE_DIR looks at that sibling folder; clean installs never read outside their own folders.
+export function legacySourceDir(env=process.env,codeRoot=root){
+ if(env.NEUROVER_SOURCE_DIR)return env.NEUROVER_SOURCE_DIR;
+ return existsSync(path.join(codeRoot,'.data'))?path.resolve(codeRoot,'../neurover-io-mcp'):null;
+}
+export const sourceDir=legacySourceDir();

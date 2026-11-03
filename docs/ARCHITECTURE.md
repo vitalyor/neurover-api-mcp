@@ -4,7 +4,7 @@ Choose the smallest relevant source/test slice here. [Repair](REPAIR.md) starts 
 
 ## Runtimes
 
-`npm start` → `src/server.js` → MCP stdio. Playwright APIRequestContext is the HTTP transport; Chromium is only fallback authentication/research. Ordinary API calls, workers, SHA and local polling do not call a model. MCP arguments/results still enter the calling model's context.
+`npm start` → `src/server.js` → MCP stdio. Playwright APIRequestContext is the HTTP transport; Chromium is only fallback authentication. Ordinary API calls, workers, SHA and local polling do not call a model. MCP arguments/results still enter the calling model's context.
 
 `npm run gallery -- JOB_ID` serves loopback on 8876 by default. Cleanup open/report tools call `ensureCleanupWeb` and reuse a compatible service. Detached inventory/verification/deletion workers outlive tabs and MCP connections, but require the machine/processes to remain running.
 
@@ -22,7 +22,7 @@ Choose the smallest relevant source/test slice here. [Repair](REPAIR.md) starts 
 | `src/clients.js` | Adds `neurover` to Claude Desktop/Cursor/Windsurf JSON and Codex `config.toml` (section replaced in place) with `.bak-neurover` backup, and to Claude Code via `claude mcp add --scope user`; invalid JSON untouched | CLI `setup`/`connect`; update tests |
 | `scripts/bundle.mjs`, `scripts/test.mjs` | Explicit release allowlist + shrinkwrap, isolated test data/legacy paths | Release and CI; staging/install checks |
 | `src/browser-auth.js` | Isolated visible login, authenticated session capture and window lifecycle | server auth tools; real CAPTCHA untested |
-| `src/routes.json` | Discovered route names/methods/paths, not verified payload definitions | server catalog/read/write; research evidence |
+| `src/routes.json` | Discovered route names/methods/paths, not verified payload definitions | server catalog/read/write; observed from the site's own web client |
 | `src/generation.js` | Live models/schema, prompt code-point limits, settings, references/multipart, quotes, draft claims | server generation tools, jobs draft/budget reuse; core tests |
 | `src/jobs.js` | Run/enhancement quotes, graph fingerprint, budget, prepare/submit | server run/enhancement tools; `test/jobs.test.js` |
 | `src/summaries.js` | Compact status/output/price/error/refund summaries | server generation tools; `test/summaries.test.js` |
@@ -83,7 +83,6 @@ Next pass: nextCleanup locks a settled completed/cancelled parent, rejects pendi
 | `dataDir/cleanup-web.json` | web PID/port/default job/start | Check service health; operation token is per process |
 | browser `neurover.cleanup.gallery.v1.<jobId>` | duplicate selection/retention/mode/density/revision | Local settings only, server plan wins |
 | same browser key + `.library` | independent exact-file selection/density | View switch cannot widen duplicate scope |
-| `research/`, `research/private/` | bundles/evidence and private account/session responses | Review public evidence before sharing; private responses stay private |
 
 ## Media and UI bounds
 

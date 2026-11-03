@@ -33,7 +33,8 @@ MCP выполняется локально. В исходном коде нет
 - `src/vault.js`: нативный адаптер; явный Secret Service, без файлового fallback, ошибки без секретов.
 - `src/accounts.js`: режимы, хранение/удаление, pending и совместимость.
 - `bin/neurover.mjs`: локальный скрытый ввод, отсутствие паролей в аргументах.
-- `src/client.js`, `src/browser-auth.js`: адрес входа, проверка email, cookies, временный браузер.
+- `src/client.js`, `src/browser-auth.js`: адрес входа, проверка email, cookies, временный браузер; пароль вводится только на странице neurover.io.
+- `src/paths.js`, `src/accounts.js`: соседняя папка `../neurover-io-mcp` и прежняя запись Keychain `neurover-io-mcp:<имя>` читаются только в старой установке «на месте» (данные в `.data` рядом с кодом) или при явном `NEUROVER_SOURCE_DIR`.
 - `src/credential-file.js`, `src/auth-broker.js`: только совместимость прежнего encrypted режима; IPC не возвращает ключи/пароли.
 - `src/media-source.js`, `src/cleanup-web.js`: HTTPS/cookies, loopback и защита операций.
 - `src/update.js`, `scripts/install.mjs`, `get.sh`, `get.ps1`: проверка версии, скачивание тега с GitHub, установка версий.

@@ -16,7 +16,7 @@ export function verifyAccountIdentity(config,user){
 }
 export async function accountNames(){
  const result=new Set();
- for(const dir of [path.join(dataDir,'accounts'),path.join(sourceDir,'.data/accounts')]){
+ for(const dir of [path.join(dataDir,'accounts'),...sourceDir?[path.join(sourceDir,'.data/accounts')]:[]]){
   let entries;try{entries=await readdir(dir,{withFileTypes:true});}catch(e){if(e.code==='ENOENT')continue;throw e;}
   for(const e of entries)if(e.isDirectory()&&/^\w[\w-]{0,63}$/.test(e.name))result.add(e.name);
  }
@@ -26,7 +26,7 @@ export async function accountSettings(name,directory=dataDir){
  accountName(name);let value;
  try{value=await readJson(path.join(directory,'accounts',name,'account.json'));}
  catch(e){if(e.code!=='ENOENT')throw new ApiError('account_config_invalid','Cannot read account settings; credentials were not used.');
-  if(directory===dataDir){try{const email=(await readFile(path.join(sourceDir,'.data/accounts',name,'email'),'utf8')).trim();if(!z.string().email().safeParse(email).success)throw Error('Invalid legacy email');return {version:1,email,mode:'legacy'};}catch(error){if(error.code!=='ENOENT')throw new ApiError('account_config_invalid','Legacy account settings are invalid.');}}
+  if(directory===dataDir&&sourceDir){try{const email=(await readFile(path.join(sourceDir,'.data/accounts',name,'email'),'utf8')).trim();if(!z.string().email().safeParse(email).success)throw Error('Invalid legacy email');return {version:1,email,mode:'legacy'};}catch(error){if(error.code!=='ENOENT')throw new ApiError('account_config_invalid','Legacy account settings are invalid.');}}
   return null;
  }
  const parsed=schema.safeParse(value);if(!parsed.success)throw new ApiError('account_config_invalid','Invalid account settings; credentials were not used.');return parsed.data;

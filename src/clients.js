@@ -67,8 +67,14 @@ export async function addToClient(file,entry,name='neurover'){
 const shell=process.platform==='win32',quote=a=>shell?`"${a}"`:a;
 const claude=args=>spawnSync('claude',args.map(quote),{encoding:'utf8',shell});
 export const hasClaudeCode=()=>{try{return claude(['--version']).status===0;}catch{return false;}};
+// Our entry runs neurover.mjs; anything else under the same name belongs to someone else and is left alone.
+export const isOwnEntry=text=>/neurover\.mjs/.test(text||'');
 export function addToClaudeCode(entry,name='neurover'){
- claude(['mcp','remove','--scope','user',name]);
+ const existing=claude(['mcp','get',name]);
+ if(existing.status===0){
+  if(!isOwnEntry(existing.stdout))throw new ApiError('claude_code_conflict',`Claude Code already has a different MCP server named "${name}"; it was left untouched.`);
+  claude(['mcp','remove','--scope','user',name]);
+ }
  const env=Object.entries(entry.env||{}).flatMap(([k,v])=>['-e',`${k}=${v}`]);
  const r=claude(['mcp','add','--scope','user',name,...env,'--',entry.command,...entry.args]);
  if(r.status!==0)throw new ApiError('claude_code_failed',(r.stderr||r.stdout||'claude mcp add failed').trim().slice(0,300));
