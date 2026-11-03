@@ -14,7 +14,8 @@ try {
     # No suitable Node.js: a private copy in the data folder. No admin rights; other programs and PATH are not touched.
     Write-Host 'Node.js 22.16+ not found. Downloading a private copy for Neurover MCP only (other programs are not affected)...'
     $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
-    $v = (Invoke-RestMethod 'https://nodejs.org/dist/index.json' | Where-Object { $_.lts } | Select-Object -First 1).version
+    # Parentheses matter: PowerShell 5.1 passes a JSON array down the pipeline as one object.
+    $v = ((Invoke-RestMethod 'https://nodejs.org/dist/index.json') | Where-Object { $_.lts } | Select-Object -First 1).version
     $name = "node-$v-win-$arch"
     $zip = Join-Path $tmp "$name.zip"
     Invoke-WebRequest -UseBasicParsing "https://nodejs.org/dist/$v/$name.zip" -OutFile $zip
