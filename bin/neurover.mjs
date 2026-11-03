@@ -46,14 +46,16 @@ ${command==='setup'||command==='settings'?`
    2 — Автоматически: пароль хранится в системном хранилище ОС (macOS Keychain,
        Windows Credential Manager, Linux Secret Service), MCP сам входит заново.
        Удобнее при регулярной работе и долгих фоновых заданиях.
-2. Попроси пользователя выполнить в своём терминале и выбрать там этот вариант:
+2. Попроси пользователя выполнить в своём терминале (не в песочнице агента) и выбрать там этот вариант:
    ${cli} ${command}${name?' '+name:''}
 3. Затем выполни: ${cli} config — там готовые настройки для любого MCP-клиента
    (Claude, Codex, Cursor, VS Code и др.). С согласия пользователя добавь их; клиент нужно перезапустить.`:`
-Попроси пользователя выполнить в своём терминале:
+Попроси пользователя выполнить в своём терминале (не в песочнице агента):
    ${cli} ${command}${name?' '+name:''}
 Для ручного входа без терминала есть MCP-инструмент neurover_browser_login:
 окно браузера откроется у пользователя, и он войдёт на сайте сам.`}`;
+// Agent apps (Codex, Claude Code and others) often run commands in a sandbox that may not write outside the project.
+const noWrite=e=>`Нет права записи в ${e.path||dataDir}. Скорее всего, команда запущена из песочницы AI-приложения. Запустите её в обычном терминале (Windows: PowerShell из меню Пуск; Mac: Терминал).`;
 async function signIn(c){
  console.log('\nСейчас нужно войти один раз, чтобы получить сессию. Пароль при этом не сохраняется.\n  1 — в окне браузера: откроется neurover.io, вы входите там сами\n  2 — ввести пароль здесь, в терминале (не отображается); если браузер недоступен');
  const method=(await ask('Выберите 1 или 2 [1]: ')).trim()||'1';
@@ -169,6 +171,6 @@ MCP работает по сессии сайта (cookies). Она сохран
  if(command==='setup')await connectClients();else console.log('\nПодключение к MCP-клиенту:\n'+connectionGuide());
 }
 if(globalThis.neuroverLauncher||process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{await run();}catch(error){console.error(`${error.code||'setup_failed'}: ${error instanceof ApiError?error.message:'Setup failed. No credentials are printed; check your local installation and vault.'}`);process.exitCode=1;}
+ try{await run();}catch(error){console.error(`${error.code||'setup_failed'}: ${error instanceof ApiError?error.message:['EPERM','EACCES'].includes(error.code)?noWrite(error):'Setup failed. No credentials are printed; check your local installation and vault.'}`);process.exitCode=1;}
  finally{if((process.argv[2]||'start')!=='start'){await closeAuthBrowsers();await closeClients();}}
 }

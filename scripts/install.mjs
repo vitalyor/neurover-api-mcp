@@ -20,7 +20,7 @@ if(step('install-browser')!==0)console.log('Браузер не установи
 let hasAccounts=false;try{hasAccounts=readdirSync(path.join(dataDir,'accounts')).length>0;}catch{}
 if(!process.stdin.isTTY){
  // Run by an agent: stop here and hand the interactive part to the person.
- console.log(`\nПрограмма установлена. Дальше нужен человек.\nАгент: объясни пользователю два режима входа (см. README) и попроси выполнить в его терминале:\n  ${cliCommand(launcher)} ${hasAccounts?'connect':'setup'}\nЕсли приложение пользователя не подключилось само (любой другой MCP-клиент), готовые настройки покажет:\n  ${cliCommand(launcher)} config`);
+ console.log(`\nПрограмма установлена. Дальше нужен человек.\nАгент: объясни пользователю два режима входа (см. README) и попроси выполнить в его собственном терминале (не в песочнице агента: там нет права записи в папку данных):\n  ${cliCommand(launcher)} ${hasAccounts?'connect':'setup'}\nЕсли приложение пользователя не подключилось само (любой другой MCP-клиент), готовые настройки покажет:\n  ${cliCommand(launcher)} config`);
  process.exit(0);
 }
 process.exit(step(hasAccounts?'connect':'setup')??1);
