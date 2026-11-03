@@ -77,7 +77,7 @@ test('the canvas uploader does not resume a pending chat upload',async t=>{
   await assert.rejects(f.run({library:undefined},async()=>{throw new Error('must not upload');}),{code:'upload_pending'});
 });
 test('reference field is resolved before upload; incompatible models upload nothing',async t=>{
-  const f=await fixture(t);const model={id:7,input_schema_json:{prompt:{},reference_images:{}}};
+  const f=await fixture(t);const model={id:7,input_schema_json:{prompt:{},reference_images:{type:'file_array',media_type:'image'}}};
   assert.equal(referenceField(model,'image'),'reference_images');assert.equal(referenceField(model,'video'),null);
   await assert.rejects(ensureLibraryMedia(f.client,{id:8,input_schema_json:{prompt:{}}},{workflowId:1,filePath:f.file}),{code:'incompatible_reference'});
   assert.equal(writes(f).length,0);

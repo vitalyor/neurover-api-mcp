@@ -54,7 +54,10 @@ export function applyLinkage(schema,settings) {
   return {settings:values,dropped};
 }
 
-const fileFields=schema=>Object.entries(schema||{}).filter(([,s])=>s?.type==='file_array'||s?.type==='array'&&(s.media_type||s.media_types));
+// Same rule as the site's chat composer: any file_array, or an array that is a reference_* or declares media types.
+// Field names are not hardcoded, so new file fields (Midjourney cref/sref, future ones) work without code changes.
+export const isFileField=(key,spec)=>{const t=String(spec?.type??'');return t==='file_array'||t==='array'&&(String(key).startsWith('reference_')||spec.media_type!==undefined||Array.isArray(spec.media_types));};
+export const fileFields=schema=>Object.entries(schema||{}).filter(([k,s])=>isFileField(k,s));
 function scenarioCounts(schema,settings) {
   const c=Object.values(schema||{}).find(s=>s?.input_constraints)?.input_constraints;
   const hit=(c?.scenarios||[]).find(s=>Object.entries(s.when||{}).every(([k,v])=>str(settings[k])===str(v)));

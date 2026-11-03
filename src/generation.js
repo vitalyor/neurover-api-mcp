@@ -5,18 +5,24 @@ import { open, mkdir } from 'node:fs/promises';
 import { root, privateJson, readJson, ApiError } from './client.js';
 import {ensureMedia} from './media.js';
 import {mimeFor} from './media-dedup.js';
-import {rewritePrompt,applyLinkage,validateReferences,frameRoles,expectedGeometry,firstFrameWarning} from './prompt-refs.js';
+import {rewritePrompt,applyLinkage,validateReferences,frameRoles,expectedGeometry,firstFrameWarning,isFileField,fileFields} from './prompt-refs.js';
+// Prompt and file fields are filled by their own inputs, never as plain settings.
+const reserved=(key,spec)=>key==='prompt'||isFileField(key,spec);
+// The site never lets users change output counts or disabled fields (they go with their defaults only), so neither does MCP:
+// otherwise an agent could multiply the cost of one request.
+const SITE_HIDDEN=new Set(['prompt','count','n','max_images','quantity','output_count','numberofruns','sequential_image_generation','sequential_generation','multi_output','multiple_outputs']);
+export const userSettable=(key,spec)=>!reserved(key,spec)&&!SITE_HIDDEN.has(String(key).toLowerCase())&&spec?.disabled!==true;
 import {recordSubmission,priorMismatches} from './journal.js';
 export const charCount = text => Array.from(text).length;
 export function settingsFor(model, settings = {}) {
   const schema=model.input_schema_json || {};
   const result={};
-  for (const [key, spec] of Object.entries(schema)) if (!['prompt','images','videos','audios','reference_images','reference_videos','reference_audios'].includes(key) && spec.default !== undefined && spec.omit_default !== true) result[key]=spec.default;
+  for (const [key, spec] of Object.entries(schema)) if (!reserved(key,spec) && !String(key).startsWith('reference_') && spec.disabled!==true && spec.default !== undefined && spec.omit_default !== true) result[key]=spec.default;
   for (let [key,value] of Object.entries(settings)) {
     const spec=schema[key];
     // Options are often strings ("5"); accept the same value given as a number/boolean.
     if(spec?.options?.length&&typeof value!=='string'&&!spec.options.some(x=>(typeof x==='object'?x.value:x)===value)){const m=spec.options.map(x=>typeof x==='object'?x.value:x).find(x=>String(x)===String(value));if(m!==undefined)value=m;}
-    if(!spec || ['prompt','images','videos','audios','reference_images','reference_videos','reference_audios'].includes(key)) throw new ApiError('invalid_setting',`Unknown or reserved model setting: ${key}`);
+    if(!spec || !userSettable(key,spec)) throw new ApiError('invalid_setting',`Unknown, reserved or site-controlled model setting: ${key}`);
     if(spec.options?.length && !spec.options.some(x=>(typeof x==='object'?x.value:x)===value)) throw new ApiError('invalid_setting',`Unsupported value for ${key}.`,{options:spec.options});
     result[key]=value;
   }
@@ -41,10 +47,17 @@ export function referenceRole(spec,kind,requested) {
   if(!role||allowed.length&&!allowed.includes(role))throw new ApiError('invalid_reference_role','Reference role is not supported by this model.',{allowedRoles:allowed});
   return role;
 }
+// Any file field of the model may be named explicitly (e.g. Midjourney cref/sref). Without a name, the standard
+// images/reference_images (videos, audios) field is used, then any other file field that accepts this media kind.
+export function acceptsKind(spec,kind){
+  const kinds=[spec?.media_type,...(Array.isArray(spec?.media_types)?spec.media_types:[])].filter(Boolean),mimes=(spec?.mime_types||[]).map(m=>String(m).split('/')[0]);
+  return !kind||!kinds.length&&!mimes.length||kinds.includes(kind)||mimes.includes(kind);
+}
 export function referenceField(model,kind,field) {
+  const schema=model.input_schema_json||{},fits=k=>isFileField(k,schema[k])&&acceptsKind(schema[k],kind);
+  if(field)return schema[field]&&fits(field)?field:null;
   const plural={image:'images',video:'videos',audio:'audios'}[kind];
-  const chosen=field||[plural,'reference_'+plural].find(k=>model.input_schema_json?.[k]);
-  return chosen&&model.input_schema_json?.[chosen]?chosen:null;
+  return [plural,'reference_'+plural].find(k=>schema[k]&&fits(k))??fileFields(schema).map(([k])=>k).find(fits)??null;
 }
 // Chat-style reference upload: the target model/field are resolved first because the media-library route
 // (the chat "Загрузить" button) requires them; it creates no canvas node.
@@ -108,9 +121,9 @@ export async function prepare(client,input) {
   const model=await resolveModel(client,input.workflowId,input);
   const requestedAspect=input.aspectRatio??input.settings?.aspect_ratio;
   // Settings this model does not have (e.g. mode for Kling or Line 42) are dropped with a warning instead of failing.
-  const schemaKeys=model.input_schema_json||{};const reservedKeys=['prompt','images','videos','audios','reference_images','reference_videos','reference_audios'];
+  const schemaKeys=model.input_schema_json||{};
   const ignored=[];const rawSettings={...input.settings,...(input.mode?{mode:input.mode}:{}),...(input.aspectRatio?{aspect_ratio:input.aspectRatio}:{}),...(input.resolution?{resolution:input.resolution}:{}),...(input.quality?{quality:input.quality}:{}),...(input.durationSeconds?{duration:input.durationSeconds}:{}),...(input.outputFormat?{output_format:input.outputFormat}:{})};
-  for(const k of Object.keys(rawSettings))if(!schemaKeys[k]||reservedKeys.includes(k)){ignored.push({field:k,value:rawSettings[k]});delete rawSettings[k];}
+  for(const k of Object.keys(rawSettings))if(!schemaKeys[k]||!userSettable(k,schemaKeys[k])){ignored.push({field:k,value:rawSettings[k]});delete rawSettings[k];}
   const fixups=[];
   const settings=settingsFor(model,rawSettings);
   const references=[];
@@ -128,7 +141,7 @@ export async function prepare(client,input) {
     references.push({mediaAssetId,field,role,...info});
   }
   const c=compose(model,settings,references,input.prompt,requestedAspect);
-  for(const x of ignored)c.warnings.push({code:'SETTING_IGNORED',message:`Setting ${x.field}=${JSON.stringify(x.value)} does not exist for ${model.display_name} and was not sent.`});
+  for(const x of ignored)c.warnings.push({code:'SETTING_IGNORED',message:schemaKeys[x.field]?`Setting ${x.field} is controlled by the site (file field, output count or disabled) and was not sent; attach files as references.`:`Setting ${x.field}=${JSON.stringify(x.value)} does not exist for ${model.display_name} and was not sent.`});
   c.warnings.push(...fixups);
   if(model.media_type==='video'&&c.settings.mode==='first-frame')c.warnings.push({code:'FIRST_FRAME_VERTICAL',message:'Known issue (01.11.2026): Seedance on Neurover in mode=first-frame returns vertical video regardless of the frame. Use mode=reference with aspect_ratio and say in the prompt that @ref_1 is the first frame.'});
   const prior=await priorMismatches(client.account,model.id,c.settings.mode).catch(()=>[]);
