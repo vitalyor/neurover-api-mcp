@@ -146,7 +146,7 @@ async function run(){
  if(command==='accounts'){
   for(const account of await accounts()){const config=await accountSettings(account);console.log(`${account}: ${config?.mode||'setup_required'}${config?.passwordRemovalPending?' (password removal pending)':''}`);}return;
  }
- if(!['setup','settings','login','unlock','lock','connect'].includes(command))throw new ApiError('invalid_command','Use --help.');
+ if(!['setup','settings','login','unlock','lock','connect','uninstall'].includes(command))throw new ApiError('invalid_command','Use --help.');
  if(command==='lock'){accountName(name);await callBroker('lock',name);console.log('Ключ расшифровки удалён из памяти. Существующая сессия сайта не завершается.');return;}
  // Agents run installers without a terminal; stop with instructions instead of waiting for input nobody can give.
  if(!process.stdin.isTTY)throw new ApiError('interactive_terminal_required',agentHandoff(command,name));
