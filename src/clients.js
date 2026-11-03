@@ -68,6 +68,27 @@ export async function addToClient(file,entry,name='neurover'){
  return {status:servers[name]?'replaced':'added',file,backup:await save(file,text,JSON.stringify(config,null,2)+'\n')};
 }
 
+// Uninstall: drop only our own entry (it runs neurover.mjs); a foreign "neurover" server is left alone. Same backup as when adding.
+export async function removeFromClient(file,name='neurover'){
+ let text;try{text=await readFile(file,'utf8');}catch(e){if(e.code==='ENOENT')return {status:'absent',file};throw e;}
+ let content;
+ if(file.endsWith('.toml')){
+  const own=l=>l.trim()===`[mcp_servers.${name}]`||l.trim().startsWith(`[mcp_servers.${name}.`),lines=text.split('\n'),start=lines.findIndex(own);
+  if(start<0)return {status:'absent',file};
+  let end=start+1;while(end<lines.length&&!(/^\s*\[/.test(lines[end])&&!own(lines[end])))end++;
+  if(!isOwnEntry(lines.slice(start,end).join('\n')))return {status:'foreign',file};
+  content=[...lines.slice(0,start),...lines.slice(end)].join('\n').replace(/\n{3,}/g,'\n\n');
+ }else{
+  let config;try{config=JSON.parse(text);}catch{throw new ApiError('client_config_invalid',`${file} is not valid JSON; it was left untouched.`);}
+  const entry=config?.mcpServers?.[name];
+  if(!entry)return {status:'absent',file};
+  if(!isOwnEntry(JSON.stringify(entry)))return {status:'foreign',file};
+  delete config.mcpServers[name];if(!Object.keys(config.mcpServers).length)delete config.mcpServers;
+  content=JSON.stringify(config,null,2)+'\n';
+ }
+ return {status:'removed',file,backup:await save(file,text,content)};
+}
+
 // Claude Code stores servers itself; use its CLI when present. On Windows "claude" is a .cmd shim that needs a shell.
 const shell=process.platform==='win32',quote=a=>shell?`"${a}"`:a;
 // One command string under a shell: Node 24+ deprecates (DEP0190) passing an args array together with shell:true.
@@ -85,4 +106,10 @@ export function addToClaudeCode(entry,name='neurover'){
  const r=claude(['mcp','add','--scope','user',name,...env,'--',entry.command,...entry.args]);
  if(r.status!==0)throw new ApiError('claude_code_failed',(r.stderr||r.stdout||'claude mcp add failed').trim().slice(0,300));
  return {status:'added',file:'Claude Code'};
+}
+export function removeFromClaudeCode(name='neurover'){
+ const existing=claude(['mcp','get',name]);
+ if(existing.status!==0)return {status:'absent',file:'Claude Code'};
+ if(!isOwnEntry(existing.stdout))return {status:'foreign',file:'Claude Code'};
+ claude(['mcp','remove','--scope','user',name]);return {status:'removed',file:'Claude Code'};
 }

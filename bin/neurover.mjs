@@ -8,8 +8,10 @@ import {root,dataDir,accounts,clientFor,closeClients,ApiError} from '../src/clie
 import {accountName,accountSettings,configureAccount} from '../src/accounts.js';
 import {browserLogin,captureBrowserSession,closeAuthBrowsers} from '../src/browser-auth.js';
 import {mcpServer,entryPoint,cliCommand,connectionGuide} from '../src/setup-config.js';
-import {installedClients,addToClient,hasClaudeCode,addToClaudeCode} from '../src/clients.js';
-import {currentVersion,checkForUpdate,applyUpdate} from '../src/update.js';
+import {installedClients,addToClient,hasClaudeCode,addToClaudeCode,knownClients,removeFromClient,removeFromClaudeCode} from '../src/clients.js';
+import {currentVersion,checkForUpdate,applyUpdate,installLayout,runningWorkers} from '../src/update.js';
+import {vaultEntry,vaultOperation} from '../src/vault.js';
+import {rm} from 'node:fs/promises';
 const cli=cliCommand();
 import {callBroker} from '../src/auth-broker.js';
 const help=`Neurover MCP
@@ -25,6 +27,7 @@ const help=`Neurover MCP
   version            Показать установленную версию
   install-browser    Установить Chromium для ручного входа
   doctor             Проверить Node, папку данных и наличие браузера
+  uninstall          Удалить всё: пароли, подключения к приложениям, программу и данные
   start              Запустить MCP через stdio (по умолчанию)
 Пароли вводятся только в локальном терминале или на neurover.io.
 `;
@@ -88,6 +91,34 @@ async function connectClients(){
  console.log(`\nДругие приложения: ${cli} config покажет готовые настройки для любого MCP-клиента.`);
  console.log('\nГотово. Полностью закройте и снова откройте приложение, и Neurover появится в его инструментах.');
 }
+// Everything the installer and setup created, in reverse: stored passwords, client entries, then the data folder.
+async function uninstall(){
+ const busy=await runningWorkers();if(busy.length)throw new ApiError('cleanup_running','Сначала остановите фоновую очистку медиатеки (пауза на её странице), затем повторите.',{running:busy});
+ const managed=installLayout().kind==='managed';
+ console.log(`Будет удалено:
+  - сохранённые пароли Neurover из системного хранилища;
+  - запись neurover в Claude Desktop, Claude Code, Codex, Cursor, Windsurf (чужие записи не трогаются);
+  - ${managed?`папка ${dataDir}: программа, Node.js, аккаунты, сессии, задания очистки`:`ничего из папки с кодом; данные в ${dataDir} удалите сами`}.
+Ваши файлы на neurover.io не затрагиваются. Перед продолжением полностью закройте Claude, Codex и другие AI-приложения.`);
+ const answer=(await ask('Удалить? Введите «да»: ')).trim().toLowerCase();
+ if(!['да','д','yes','y'].includes(answer)){console.log('Отменено, ничего не удалено.');return;}
+ for(const name of await accounts()){
+  const config=await accountSettings(name).catch(()=>null);
+  if(!config||!(config.mode==='vault'||config.vaultRemovalPending))continue;
+  try{if(await vaultOperation(vaultEntry,name,config.email,'getPassword')){await vaultOperation(vaultEntry,name,config.email,'deletePassword');console.log(`  Пароль ${name}: удалён из системного хранилища.`);}}
+  catch{console.log(`  Пароль ${name}: удалить не удалось. Удалите вручную запись neurover-api-mcp:${name} (Windows: Диспетчер учётных данных; Mac: Связка ключей).`);}
+ }
+ for(const c of knownClients()){try{const r=await removeFromClient(c.file);if(r.status==='removed')console.log(`  ${c.name}: отключено (копия прежних настроек: ${r.backup}).`);}catch(e){console.log(`  ${c.name}: ${e.message}`);}}
+ if(hasClaudeCode()&&removeFromClaudeCode().status==='removed')console.log('  Claude Code: отключено.');
+ if(!managed){console.log(`Готово. Удалите папку с кодом и, если не нужны, данные: ${dataDir}`);return;}
+ console.log(`  Папка ${dataDir}: удаляется…`);
+ if(process.platform==='win32'){
+  // Windows keeps running node.exe locked, and it lives inside this folder: delete after this process exits.
+  spawn('cmd.exe',['/d','/c',`ping -n 3 127.0.0.1 >nul & rmdir /s /q "${dataDir}"`],{detached:true,stdio:'ignore',windowsHide:true}).unref();
+ }else await rm(dataDir,{recursive:true,force:true});
+ console.log(`Готово. Если папка ${dataDir} осталась (её держало открытое AI-приложение), закройте приложения и удалите её вручную.
+Браузер для входа лежит в общей папке Playwright (ms-playwright) и может использоваться другими программами; его можно удалить отдельно.`);
+}
 async function run(){
  const [command='start',name,...extra]=process.argv.slice(2);
  if(extra.length||name&&!['settings','login','unlock','lock'].includes(command))throw new ApiError('invalid_command','Use --help. Passwords are never accepted in arguments.');
@@ -120,6 +151,7 @@ async function run(){
  // Agents run installers without a terminal; stop with instructions instead of waiting for input nobody can give.
  if(!process.stdin.isTTY)throw new ApiError('interactive_terminal_required',agentHandoff(command,name));
  if(command==='connect'){await connectClients();return;}
+ if(command==='uninstall'){await uninstall();return;}
  if(command==='unlock'){
   accountName(name);if((await accountSettings(name))?.mode!=='encrypted')throw new ApiError('invalid_mode','This account does not use encrypted storage.');
   let masterPassword=await ask('Мастер-пароль (не отображается): ',{secret:true});

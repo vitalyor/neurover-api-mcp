@@ -23,6 +23,8 @@
 !/scripts/check-readonly.mjs
 !/scripts/install.mjs
 !/scripts/launcher.mjs
+!/scripts/neurover.cmd
+!/scripts/neurover.sh
 !/scripts/gallery-fixtures.mjs
 !/scripts/gallery-live-fixture.mjs
 

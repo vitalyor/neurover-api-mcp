@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {existsSync} from 'node:fs';
 import {root,dataDir} from './paths.js';
 import {installLayout} from './update.js';
 import {codexBlock} from './clients.js';
@@ -7,7 +8,10 @@ export function entryPoint(){const layout=installLayout();return layout.kind==='
 export function mcpServer(){return {command:process.execPath,args:[entryPoint(),'start'],env:{NEUROVER_DATA_DIR:dataDir}};}
 export function mcpConfig(){return {mcpServers:{neurover:mcpServer()}};}
 // The exact Node that runs us: the installer may have set up a private copy that is not on PATH. PowerShell needs & before a quoted program.
-export function cliCommand(entry=entryPoint(),{platform=process.platform,node=process.execPath}={}){return `${platform==='win32'?'& ':''}"${node}" "${entry}"`;}
+export const wrapperPath=(platform=process.platform,dir=dataDir)=>path.join(dir,platform==='win32'?'neurover.cmd':'neurover');
+export function cliCommand(entry=entryPoint(),{platform=process.platform,node=process.execPath,wrapper=existsSync(wrapperPath(platform))?wrapperPath(platform):null}={}){
+ return `${platform==='win32'?'& ':''}${wrapper?`"${wrapper}"`:`"${node}" "${entry}"`}`;
+}
 // One text that lets a person or agent connect any MCP harness: the universal stdio fields plus the common config shapes.
 export function connectionGuide(entry=mcpServer()){
  const q=s=>/[\s"']/.test(s)?JSON.stringify(s):s,json=v=>JSON.stringify(v,null,2);

@@ -1,5 +1,5 @@
 // Release check and self-update. Node built-ins only: the one-line installer runs this before dependencies exist.
-import {readFile,writeFile,mkdir,rename,rm,readdir,cp,access} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,rename,rm,readdir,cp,access,chmod} from 'node:fs/promises';
 import {readFileSync,existsSync} from 'node:fs';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
@@ -90,6 +90,9 @@ export async function installManaged(app,version,{fetchSource=downloadSource,ins
   }catch(e){await rm(partial,{recursive:true,force:true});throw e;}
  }
  await cp(path.join(target,'scripts/launcher.mjs'),path.join(app,'neurover.mjs'));
+ // A short fixed command next to the data: <data>/neurover(.cmd). Older versions do not ship it.
+ const wrapper=process.platform==='win32'?['neurover.cmd','neurover.cmd']:['neurover.sh','neurover'];
+ if(existsSync(path.join(target,'scripts',wrapper[0]))){const to=path.join(path.dirname(app),wrapper[1]);await cp(path.join(target,'scripts',wrapper[0]),to);await chmod(to,0o755);}
  const previous=await readJson(path.join(app,'current.json')).then(v=>v.version).catch(()=>null);
  await writeFile(path.join(app,'current.json.tmp'),JSON.stringify({version,previous},null,1));await retryTransient(()=>rename(path.join(app,'current.json.tmp'),path.join(app,'current.json')));
  // ponytail: keep current + previous only; a worker still running from an older folder keeps its loaded code.

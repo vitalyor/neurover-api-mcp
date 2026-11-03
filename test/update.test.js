@@ -172,3 +172,23 @@ test('Codex: an existing neurover section is replaced in place, later sections k
  const fresh=path.join(dir,'new.toml');await addToClient(fresh,{command:'node',args:['a']});
  assert.equal(await readFile(fresh,'utf8'),'[mcp_servers.neurover]\ncommand = "node"\nargs = ["a"]\nstartup_timeout_sec = 20\ntool_timeout_sec = 120\n');
 });
+
+test('uninstall removes only our own client entries and keeps everything else',async t=>{
+ const {removeFromClient}=await import('../src/clients.js');
+ const dir=await mkdtemp(path.join(os.tmpdir(),'neurover-unclient-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const entry={command:'/n/node',args:['/d/app/neurover.mjs','start'],env:{NEUROVER_DATA_DIR:'/d'}};
+ const json=path.join(dir,'claude.json');await writeFile(json,JSON.stringify({preferences:{a:1},mcpServers:{other:{command:'x'}}}));
+ await addToClient(json,entry);
+ assert.equal((await removeFromClient(json)).status,'removed');
+ assert.deepEqual(JSON.parse(await readFile(json,'utf8')),{preferences:{a:1},mcpServers:{other:{command:'x'}}});
+ const only=path.join(dir,'only.json');await addToClient(only,entry);await removeFromClient(only);
+ assert.deepEqual(JSON.parse(await readFile(only,'utf8')),{},'an emptied mcpServers is dropped');
+ const foreign=path.join(dir,'foreign.json');await writeFile(foreign,JSON.stringify({mcpServers:{neurover:{command:'someone-else'}}}));
+ assert.equal((await removeFromClient(foreign)).status,'foreign');
+ const toml=path.join(dir,'config.toml');await writeFile(toml,'model = "x"\n\n[mcp_servers.keep]\ncommand = "k"\n');
+ await addToClient(toml,entry);await writeFile(toml,(await readFile(toml,'utf8'))+'\n[plugins.p]\nenabled = true\n');
+ assert.equal((await removeFromClient(toml)).status,'removed');
+ const left=await readFile(toml,'utf8');
+ assert.ok(!left.includes('neurover')&&left.includes('[mcp_servers.keep]')&&left.includes('[plugins.p]'),left);
+ assert.equal((await removeFromClient(path.join(dir,'missing.json'))).status,'absent');
+});

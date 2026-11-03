@@ -38,8 +38,9 @@ test('Windows file locks are retried briefly; real errors are not',async()=>{
 
 test('printed commands name the exact Node that runs MCP, ready for the user’s shell',async()=>{
  const {cliCommand}=await import('../src/setup-config.js');
- assert.equal(cliCommand('/a b/neurover.mjs',{platform:'darwin',node:'/x y/node'}),'"/x y/node" "/a b/neurover.mjs"');
- assert.equal(cliCommand('C:\\N\\neurover.mjs',{platform:'win32',node:'C:\\N\\node\\node.exe'}),'& "C:\\N\\node\\node.exe" "C:\\N\\neurover.mjs"','PowerShell needs & before a quoted program');
+ assert.equal(cliCommand('/a b/neurover.mjs',{platform:'darwin',node:'/x y/node',wrapper:null}),'"/x y/node" "/a b/neurover.mjs"');
+ assert.equal(cliCommand('/a/neurover.mjs',{platform:'darwin',wrapper:'/d d/neurover'}),'"/d d/neurover"','the short wrapper wins when installed');
+ assert.equal(cliCommand('C:\\N\\neurover.mjs',{platform:'win32',node:'C:\\N\\node\\node.exe',wrapper:null}),'& "C:\\N\\node\\node.exe" "C:\\N\\neurover.mjs"','PowerShell needs & before a quoted program');
 });
 
 test('connection guide works for any MCP harness: universal fields and the common config shapes',async()=>{
