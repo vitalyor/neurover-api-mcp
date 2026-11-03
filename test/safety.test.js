@@ -47,3 +47,10 @@ test('connection guide works for any MCP harness: universal fields and the commo
  const g=connectionGuide({command:'/x y/node',args:['/a/neurover.mjs','start'],env:{NEUROVER_DATA_DIR:'/d'}});
  for(const part of ['type:    stdio','command: /x y/node','"mcpServers"','"servers"','[mcp_servers.neurover]','claude mcp add --scope user neurover -e NEUROVER_DATA_DIR=/d -- "/x y/node" /a/neurover.mjs start','найдите в его документации'])assert.ok(g.includes(part),part);
 });
+
+test('connecting clients: only an explicit "no" skips, a typo asks again',async()=>{
+ const {parseYesNo}=await import('../bin/neurover.mjs');
+ for(const a of ['','д','Да','y','YES'])assert.equal(parseYesNo(a),true,a);
+ for(const a of ['н','нет','n','No'])assert.equal(parseYesNo(a),false,a);
+ for(const a of ['l','ыв','1','da'])assert.equal(parseYesNo(a),null,a);
+});

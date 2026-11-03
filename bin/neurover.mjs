@@ -71,13 +71,16 @@ async function signIn(c){
  }
  return result;
 }
+// A typo must not skip a client: only an explicit "no" skips, anything unrecognised asks again. Enter means yes.
+export const parseYesNo=a=>{a=a.trim().toLowerCase();return !a||['д','да','y','yes'].includes(a)?true:['н','нет','n','no'].includes(a)?false:null;};
+async function yesNo(question){for(;;){const r=parseYesNo(await ask(question));if(r!==null)return r;console.log('  Не понял ответ. Введите «д» (да) или «н» (нет); Enter — да.');}}
 async function connectClients(){
  const entry=mcpServer();
  const found=[...installedClients().map(c=>({name:c.name,add:()=>addToClient(c.file,entry)})),...hasClaudeCode()?[{name:'Claude Code',add:()=>addToClaudeCode(entry)}]:[]];
  console.log('\nПодключение к AI-приложениям');
  for(const c of found){
-  const answer=(await ask(`Добавить Neurover в ${c.name}? [Д/н]: `)).trim().toLowerCase();
-  if(answer&&!['д','да','y','yes'].includes(answer)){console.log(`  ${c.name}: пропущено.`);continue;}
+  const answer=await yesNo(`Добавить Neurover в ${c.name}? [Д/н]: `);
+  if(!answer){console.log(`  ${c.name}: пропущено. Подключить позже: ${cli} connect`);continue;}
   try{const r=await c.add();console.log(`  ${c.name}: ${r.status==='unchanged'?'уже подключено':'подключено'}${r.backup?`; прежние настройки сохранены в ${r.backup}`:''}.`);}
   catch(e){console.log(`  ${c.name}: ${e.message}`);}
  }
