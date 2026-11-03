@@ -130,6 +130,8 @@ test('client config locations per platform',()=>{
  assert.ok(win.includes('C:\\Users\\u\\AppData\\Roaming\\Claude\\claude_desktop_config.json'));
  const store='C:\\Users\\u\\AppData\\Local\\Packages\\Claude_pzs8sxrjxfjjc\\LocalCache\\Roaming\\Claude';
  assert.equal(knownClients('win32',{},'C:\\Users\\u',dir=>dir===store)[0].file,store+'\\claude_desktop_config.json','Store/MSIX Claude reads its packaged AppData');
+ const data='C:\\Users\\u\\AppData\\Local\\Claude-Data\\claude_pzs8sxrjxfjjc';
+ assert.equal(knownClients('win32',{},'C:\\Users\\u',dir=>dir===data||dir===store)[0].file,data+'\\claude_desktop_config.json','current MSIX builds keep data in Local\\Claude-Data');
  assert.ok(knownClients('linux',{},'/home/u').some(c=>c.file==='/home/u/.config/Claude/claude_desktop_config.json'));
 });
 
