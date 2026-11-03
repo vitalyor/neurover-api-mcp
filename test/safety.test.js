@@ -35,3 +35,9 @@ test('Windows file locks are retried briefly; real errors are not',async()=>{
  let missing=0;await assert.rejects(retryTransient(async()=>{missing++;throw Object.assign(new Error('gone'),{code:'ENOENT'});},{delayMs:1}),e=>e.code==='ENOENT');assert.equal(missing,1,'non-transient errors are not retried');
  let stuck=0;await assert.rejects(retryTransient(async()=>{stuck++;throw Object.assign(new Error('busy'),{code:'EBUSY'});},{attempts:4,delayMs:1}),e=>e.code==='EBUSY');assert.equal(stuck,4,'gives up after the limit');
 });
+
+test('printed commands name the exact Node that runs MCP, ready for the user’s shell',async()=>{
+ const {cliCommand}=await import('../src/setup-config.js');
+ assert.equal(cliCommand('/a b/neurover.mjs',{platform:'darwin',node:'/x y/node'}),'"/x y/node" "/a b/neurover.mjs"');
+ assert.equal(cliCommand('C:\\N\\neurover.mjs',{platform:'win32',node:'C:\\N\\node\\node.exe'}),'& "C:\\N\\node\\node.exe" "C:\\N\\neurover.mjs"','PowerShell needs & before a quoted program');
+});

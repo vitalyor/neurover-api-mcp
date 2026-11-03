@@ -7,10 +7,10 @@ import {fileURLToPath} from 'node:url';
 import {root,dataDir,accounts,clientFor,closeClients,ApiError} from '../src/client.js';
 import {accountName,accountSettings,configureAccount} from '../src/accounts.js';
 import {browserLogin,captureBrowserSession,closeAuthBrowsers} from '../src/browser-auth.js';
-import {mcpConfig,mcpServer,entryPoint} from '../src/setup-config.js';
+import {mcpConfig,mcpServer,entryPoint,cliCommand} from '../src/setup-config.js';
 import {installedClients,addToClient,hasClaudeCode,addToClaudeCode} from '../src/clients.js';
 import {currentVersion,checkForUpdate,applyUpdate} from '../src/update.js';
-const cli=`node "${entryPoint()}"`;
+const cli=cliCommand();
 import {callBroker} from '../src/auth-broker.js';
 const help=`Neurover MCP
   setup              Добавить аккаунт и выбрать способ входа
