@@ -68,7 +68,8 @@ export async function addToClient(file,entry,name='neurover'){
 
 // Claude Code stores servers itself; use its CLI when present. On Windows "claude" is a .cmd shim that needs a shell.
 const shell=process.platform==='win32',quote=a=>shell?`"${a}"`:a;
-const claude=args=>spawnSync('claude',args.map(quote),{encoding:'utf8',shell});
+// One command string under a shell: Node 24+ deprecates (DEP0190) passing an args array together with shell:true.
+const claude=args=>shell?spawnSync(['claude',...args.map(quote)].join(' '),{encoding:'utf8',shell}):spawnSync('claude',args,{encoding:'utf8'});
 export const hasClaudeCode=()=>{try{return claude(['--version']).status===0;}catch{return false;}};
 // Our entry runs neurover.mjs; anything else under the same name belongs to someone else and is left alone.
 export const isOwnEntry=text=>/neurover\.mjs/.test(text||'');
