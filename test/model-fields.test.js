@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {isFileField,fileFields} from '../src/prompt-refs.js';
-import {referenceField,settingsFor,userSettable,prepare} from '../src/generation.js';
+import {referenceField,settingsFor,userSettable,prepare,messageForm} from '../src/generation.js';
 
 const file=(extra={})=>({type:'file_array',roles:['generic'],default_role:'generic',media_type:'image',media_types:['image'],mime_types:['image/jpeg','image/png','image/webp'],...extra});
 // Shaped like the live Midjourney schema (2026-11-03): images up to 4, character (cref) and style (sref) one each.
@@ -80,4 +80,17 @@ test('per-field limits apply to new fields too: two character references are rej
  const c=stubClient();
  await assert.rejects(prepare(c,{workflowId:1,modelId:108,prompt:'two heroes',references:[{mediaAssetId:11,field:'cref'},{mediaAssetId:14,field:'cref'}]}),e=>e.code==='invalid_references'&&e.details.problems.some(p=>p.field==='cref'&&p.max===1));
  assert.equal(c.sent.length,0);
+});
+
+test('multi_select settings are lists, validated like the site and sent as one JSON field',()=>{
+ const model={input_schema_json:{prompt:{type:'text'},mode:{type:'select',default:'reference',options:['reference']},skill_preset:{key:'skill_preset',type:'multi_select',options:['none','wipe','orbit','dolly'],max_items:2,exclusive_options:['none']}}};
+ assert.deepEqual(settingsFor(model,{skill_preset:['wipe','orbit']}).skill_preset,['wipe','orbit']);
+ assert.deepEqual(settingsFor(model,{skill_preset:'wipe'}).skill_preset,['wipe'],'a single value becomes a list');
+ for(const bad of [['wipe','unknown'],['wipe','orbit','dolly'],['none','wipe'],['wipe','wipe']])assert.throws(()=>settingsFor(model,{skill_preset:bad}),{code:'invalid_setting'},String(bad));
+ const entries=f=>[...f.entries()];
+ const list=entries(messageForm({requestId:'r',modelId:1,prompt:'p',settings:{mode:'reference',skill_preset:['wipe']},references:[]}));
+ assert.deepEqual(JSON.parse(list.find(([k])=>k==='settings')[1]),{mode:'reference',skill_preset:['wipe']});
+ assert.equal(list.some(([k])=>k.startsWith('settings[')),false);
+ const plain=entries(messageForm({requestId:'r',modelId:1,prompt:'p',settings:{mode:'reference',sound:true},references:[]}));
+ assert.deepEqual(plain.filter(([k])=>k.startsWith('settings')),[['settings[mode]','reference'],['settings[sound]','1']],'without lists the form stays as before');
 });

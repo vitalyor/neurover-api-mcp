@@ -93,3 +93,19 @@ CLI accepts no password/master in arguments, env or MCP. New settings permit man
 Old plaintext settings parse for migration but credentialsFor returns credential_migration_required. Old encrypted accounts retain private local unlock/login compatibility; no new encrypted records are configured. Legacy owner Keychain records remain untouched. Native save/delete tests use injected synthetic entries; actual macOS probe uses an isolated random record and deletes it.
 
 Neurover password POST has maxRedirects:0, rejects foreign redirects, verifies email before accepting session. MCP setup/settings expose commands/mode only. Cookies still persist locally, independently of password mode. Test runner isolates state, bundle allowlist excludes all private state.
+
+## Multi-select settings (seen 2026-11-08)
+
+`type:'multi_select'` fields carry `options`, `max_items`, optional `exclusive_options`. When any setting is a list the site's composer sends all settings as one JSON form field `settings`; otherwise `settings[key]` per value. Access responses may omit `available`; a missing asset answers 404.
+
+## Workflow deletion and run-all (seen 2026-11-08)
+
+DELETE `/workflows/<id>` needs JSON `{confirmed:true}` and `X-Workflow-Version`, answers `deleted_project_id`, and the site says the workflow cannot be restored (files stay in the library). GET `/workflows/<id>/deletion-preview` is the site's preview. POST `/runs/preview` with `{}` (run all) answers 403 for non-admin accounts; the button is shown only with `auth.isAdmin`. Edge handles: `out:<kind>` to `in:text` or `in:<file field>`.
+
+## Automatic mode (seen 2026-11-08)
+
+`input_constraints.auto_resolve_fields` (usually `mode`) follow from the attached references unless the caller chose them: one fitting scenario wins, several fall to the model default, none leaves the value for `validateReferences` to explain. Same rule as the site's composer (`autoResolve` in `src/prompt-refs.js`).
+
+## Paid request refused by the site
+
+HTTP 400/401/403/419/422/429 on a paid send is a definite refusal: `submit_rejected` with the site's message, token stays claimed with status `rejected`, prepare again. Network errors, 409 and 5xx stay `request_uncertain`.

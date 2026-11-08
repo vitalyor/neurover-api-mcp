@@ -16,9 +16,9 @@ export async function download(client,input) {
   const response=await mediaResponse(client,media);
   const contentType=response.headers.get('content-type') || '';
   if(!/^(image|video|audio)\//.test(contentType) && !contentType.includes('octet-stream')){await response.body.cancel();throw new ApiError('unexpected_download','Server did not return media.');}
-  const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp','video/mp4':'.mp4','video/webm':'.webm','audio/mpeg':'.mp3','audio/wav':'.wav','audio/mp4':'.m4a'}[contentType.split(';')[0]] || '.bin';
+  const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp','image/gif':'.gif','video/mp4':'.mp4','video/webm':'.webm','audio/mpeg':'.mp3','audio/wav':'.wav','audio/mp4':'.m4a'}[contentType.split(';')[0]] || '.bin';
   const name=(media.name||'media').replace(/[^\p{L}\p{N}._-]+/gu,'_').replace(/^\.+/,'').slice(0,100)||'media';
-  const fileName=input.fileName||`${name}-${input.mediaAssetId}${ext}`;
+  const fileName=input.fileName?(path.extname(input.fileName)?input.fileName:input.fileName+ext):`${name}-${input.mediaAssetId}${ext}`;
   const destination=safeDestination(input.outputDir,fileName);await mkdir(input.outputDir,{recursive:true});
   const temp=path.join(input.outputDir,`.neurover-${randomUUID()}.part`);
   try{await pipeline(Readable.fromWeb(response.body),createWriteStream(temp,{flags:'wx',mode:0o600}));await copyFile(temp,destination,constants.COPYFILE_EXCL);}finally{await unlink(temp).catch(()=>{});}

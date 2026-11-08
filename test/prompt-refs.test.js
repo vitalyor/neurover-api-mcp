@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {rewritePrompt,applyLinkage,validateReferences,expectedGeometry,firstFrameWarning,checkOrientation,tileNames} from '../src/prompt-refs.js';
+import {autoResolve,rewritePrompt,applyLinkage,validateReferences,expectedGeometry,firstFrameWarning,checkOrientation,tileNames} from '../src/prompt-refs.js';
 import {compose,messageForm} from '../src/generation.js';
 import {expectedFromServer} from '../src/journal.js';
 
@@ -82,4 +82,23 @@ test('compose: final prompt, table and sent settings match; invalid input reserv
   assert.equal(form.get('body'),c.prompt);assert.equal(form.get('settings[aspect_ratio]'),null);assert.deepEqual(form.getAll('reference_asset_ids[images][]'),['900003','900001','900002']);
   assert.throws(()=>compose(seedance,{mode:'first-frame'},[frame],'@ref_2','16:9'),{code:'unknown_reference_label'});
   assert.throws(()=>compose(seedance,{mode:'first-frame'},[],'text only'),{code:'invalid_references'});
+});
+
+test('mode follows the references like the site composer, unless the user chose it',()=>{
+  const c={version:1,auto_resolve_fields:['mode'],scenarios:[
+    {when:{mode:'text-to-image'},reference_counts:{images:{min:0,max:0}}},
+    {when:{mode:'image-edit'},reference_counts:{images:{min:1,max:1}}},
+    {when:{mode:'multi-reference'},reference_counts:{images:{min:2,max:14}}}]};
+  const schema={mode:{type:'select',default:'text-to-image',options:['text-to-image','image-edit','multi-reference'],input_constraints:c},images:{type:'file_array'}};
+  const refs=n=>Array.from({length:n},()=>({field:'images'})),base={mode:'text-to-image'};
+  assert.deepEqual(autoResolve(schema,base,{},refs(0)),{mode:'text-to-image'});
+  assert.deepEqual(autoResolve(schema,base,{},refs(1)),{mode:'image-edit'});
+  assert.deepEqual(autoResolve(schema,base,{},refs(3)),{mode:'multi-reference'});
+  assert.deepEqual(autoResolve(schema,base,{mode:'text-to-image'},refs(1)),{},'an explicit choice is never overridden');
+  assert.deepEqual(autoResolve(schema,base,{},refs(15)),{},'no fitting mode: left for validation to explain');
+  // Several fit: the default wins, as on the site (Midjourney with images stays text-to-image).
+  const open={...schema,mode:{...schema.mode,input_constraints:{...c,scenarios:[{when:{mode:'text-to-image'},reference_counts:{images:{min:0,max:4}}},{when:{mode:'multi-reference'},reference_counts:{images:{min:2,max:4}}}]}}};
+  assert.deepEqual(autoResolve(open,base,{},refs(2)),{mode:'text-to-image'});
+  assert.deepEqual(autoResolve({prompt:{}},{}, {},refs(1)),{},'models without constraints are untouched');
+  assert.throws(()=>compose({id:1,input_schema_json:{...schema,prompt:{max:100}}},{mode:'text-to-image'},[{field:'images',kind:'image',mediaAssetId:1}],'x'),e=>e.details.fittingChoices[0].mode==='image-edit');
 });

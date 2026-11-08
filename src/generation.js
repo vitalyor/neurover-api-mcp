@@ -3,9 +3,10 @@ import { randomUUID, createHash } from 'node:crypto';
 import path from 'node:path';
 import { open, mkdir } from 'node:fs/promises';
 import { root, privateJson, readJson, ApiError } from './client.js';
+import {siteRefused} from './errors.js';
 import {ensureMedia} from './media.js';
 import {mimeFor} from './media-dedup.js';
-import {rewritePrompt,applyLinkage,validateReferences,frameRoles,expectedGeometry,firstFrameWarning,isFileField,fileFields} from './prompt-refs.js';
+import {autoResolve,fittingChoices,rewritePrompt,applyLinkage,validateReferences,frameRoles,expectedGeometry,firstFrameWarning,isFileField,fileFields} from './prompt-refs.js';
 // Prompt and file fields are filled by their own inputs, never as plain settings.
 const reserved=(key,spec)=>key==='prompt'||isFileField(key,spec);
 // The site never lets users change output counts or disabled fields (they go with their defaults only), so neither does MCP:
@@ -14,6 +15,15 @@ const SITE_HIDDEN=new Set(['prompt','count','n','max_images','quantity','output_
 export const userSettable=(key,spec)=>!reserved(key,spec)&&!SITE_HIDDEN.has(String(key).toLowerCase())&&spec?.disabled!==true;
 import {recordSubmission,priorMismatches} from './journal.js';
 export const charCount = text => Array.from(text).length;
+// Several options at once (character voices, filming techniques): a list limited by max_items; an exclusive option ("none") stands alone.
+function multiSelect(key,spec,value){
+  const list=Array.isArray(value)?value:[value],options=(spec.options||[]).map(x=>typeof x==='object'?x.value:x),bad=list.filter(x=>!options.includes(x));
+  if(bad.length)throw new ApiError('invalid_setting',`Unsupported value for ${key}.`,{invalid:bad,options});
+  if(new Set(list).size!==list.length)throw new ApiError('invalid_setting',`Repeated value in ${key}.`);
+  if(spec.max_items&&list.length>spec.max_items)throw new ApiError('invalid_setting',`${key} accepts at most ${spec.max_items} values.`,{max:spec.max_items});
+  if(list.length>1&&list.some(x=>spec.exclusive_options?.includes(x)))throw new ApiError('invalid_setting',`${key}: ${spec.exclusive_options.join(', ')} cannot be combined with other values.`);
+  return list;
+}
 export function settingsFor(model, settings = {}) {
   const schema=model.input_schema_json || {};
   const result={};
@@ -23,6 +33,7 @@ export function settingsFor(model, settings = {}) {
     // Options are often strings ("5"); accept the same value given as a number/boolean.
     if(spec?.options?.length&&typeof value!=='string'&&!spec.options.some(x=>(typeof x==='object'?x.value:x)===value)){const m=spec.options.map(x=>typeof x==='object'?x.value:x).find(x=>String(x)===String(value));if(m!==undefined)value=m;}
     if(!spec || !userSettable(key,spec)) throw new ApiError('invalid_setting',`Unknown, reserved or site-controlled model setting: ${key}`);
+    if(spec.type==='multi_select'){result[key]=multiSelect(key,spec,value);continue;}
     if(spec.options?.length && !spec.options.some(x=>(typeof x==='object'?x.value:x)===value)) throw new ApiError('invalid_setting',`Unsupported value for ${key}.`,{options:spec.options});
     result[key]=value;
   }
@@ -84,7 +95,9 @@ export function messageForm(item, quoteId) {
   const form=new FormData();
   form.append('client_request_id',item.requestId);form.append('ai_model_id',String(item.modelId));form.append('body',item.prompt);
   if(quoteId)form.append('price_quote_id',quoteId);
-  for(const [k,v] of Object.entries(item.settings)) form.append(`settings[${k}]`,encode(v));
+  // Same rule as the site's composer: a list anywhere sends the whole settings object as one JSON field.
+  if(Object.values(item.settings).some(Array.isArray))form.append('settings',JSON.stringify(item.settings));
+  else for(const [k,v] of Object.entries(item.settings)) form.append(`settings[${k}]`,encode(v));
   for(const r of item.references || []) {form.append(`reference_asset_ids[${r.field}][]`,String(r.mediaAssetId));form.append(`reference_asset_roles[${r.field}][]`,r.role || 'reference');}
   return form;
 }
@@ -108,7 +121,7 @@ export async function mediaInfo(client,workflowId,mediaAssetId,hint) {
 export function compose(model,settingsIn,references,prompt,requestedAspect) {
   const {settings,dropped}=applyLinkage(model.input_schema_json,settingsIn);
   const check=validateReferences(model.input_schema_json,settings,references);
-  if(check.errors.length)throw new ApiError('invalid_references','References do not fit the model limits; nothing was reserved.',{problems:check.errors});
+  if(check.errors.length)throw new ApiError('invalid_references','References do not fit the model limits; nothing was reserved.',{problems:check.errors,fittingChoices:fittingChoices(model.input_schema_json,settings,references)});
   const rewritten=rewritePrompt(prompt,references);
   const characters=validatePrompt(model,rewritten.prompt);
   const roles=frameRoles(settings,references);
@@ -122,7 +135,7 @@ export async function prepare(client,input) {
   const requestedAspect=input.aspectRatio??input.settings?.aspect_ratio;
   // Settings this model does not have (e.g. mode for Kling or Line 42) are dropped with a warning instead of failing.
   const schemaKeys=model.input_schema_json||{};
-  const ignored=[];const rawSettings={...input.settings,...(input.mode?{mode:input.mode}:{}),...(input.aspectRatio?{aspect_ratio:input.aspectRatio}:{}),...(input.resolution?{resolution:input.resolution}:{}),...(input.quality?{quality:input.quality}:{}),...(input.durationSeconds?{duration:input.durationSeconds}:{}),...(input.outputFormat?{output_format:input.outputFormat}:{})};
+  const ignored=[];const rawSettings={...input.settings,...(input.mode?{mode:input.mode}:{}),...(input.aspectRatio?{aspect_ratio:input.aspectRatio}:{}),...(input.resolution?{[!schemaKeys.resolution&&schemaKeys.size?'size':'resolution']:input.resolution}:{}),...(input.quality?{quality:input.quality}:{}),...(input.durationSeconds?{duration:input.durationSeconds}:{}),...(input.outputFormat?{output_format:input.outputFormat}:{})};
   for(const k of Object.keys(rawSettings))if(!schemaKeys[k]||!userSettable(k,schemaKeys[k])){ignored.push({field:k,value:rawSettings[k]});delete rawSettings[k];}
   const fixups=[];
   const settings=settingsFor(model,rawSettings);
@@ -140,7 +153,10 @@ export async function prepare(client,input) {
     catch(e){if(!ref.role)throw e;role=referenceRole(model.input_schema_json[field],kind);fixups.push({code:'REFERENCE_ROLE_FIXED',message:`Role "${ref.role}" is not allowed for ${field}; using "${role}".`});}
     references.push({mediaAssetId,field,role,...info});
   }
+  Object.assign(settings,autoResolve(schemaKeys,settings,rawSettings,references));
   const c=compose(model,settings,references,input.prompt,requestedAspect);
+  // A hidden default nobody asked for is not news; report only what the caller set.
+  c.warnings=c.warnings.filter(w=>w.code!=='SETTING_NOT_SENT'||w.field in rawSettings);
   for(const x of ignored)c.warnings.push({code:'SETTING_IGNORED',message:schemaKeys[x.field]?`Setting ${x.field} is controlled by the site (file field, output count or disabled) and was not sent; attach files as references.`:`Setting ${x.field}=${JSON.stringify(x.value)} does not exist for ${model.display_name} and was not sent.`});
   c.warnings.push(...fixups);
   if(model.media_type==='video'&&c.settings.mode==='first-frame')c.warnings.push({code:'FIRST_FRAME_VERTICAL',message:'Known issue (01.11.2026): Seedance on Neurover in mode=first-frame returns vertical video regardless of the frame. Use mode=reference with aspect_ratio and say in the prompt that @ref_1 is the first frame.'});
@@ -189,5 +205,7 @@ export async function submit(client,token,maxCredits) {
     await privateJson(claim,{status:'submitted',requestId:item.requestId,result});
     try{await recordSubmission(item,result);}catch{}
     return {status:'submitted',account:item.account,workflowId:item.workflowId,requestId:item.requestId,estimatedCredits:current.credits_minor/100,...result};
-  }catch(e){await privateJson(claim,{status:'request_uncertain',requestId:item.requestId,at:Date.now()});throw new ApiError('request_uncertain','Submission was attempted once. Inspect messages using requestId; do not retry this token.',{requestId:item.requestId,cause:e.code});}
+  }catch(e){
+    if(siteRefused(e)){await privateJson(claim,{status:'rejected',requestId:item.requestId,at:Date.now(),cause:e.code});throw new ApiError('submit_rejected',`Neurover refused this request, nothing was started: ${e.message} Fix the cause or wait for running generations, then prepare again.`,{requestId:item.requestId,cause:e.code,httpStatus:e.details?.httpStatus,errors:e.details?.errors});}
+    await privateJson(claim,{status:'request_uncertain',requestId:item.requestId,at:Date.now()});throw new ApiError('request_uncertain','Submission was attempted once. Inspect messages using requestId; do not retry this token.',{requestId:item.requestId,cause:e.code});}
 }

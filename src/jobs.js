@@ -1,6 +1,7 @@
 import {randomUUID,createHash} from 'node:crypto';
 import {open,access} from 'node:fs/promises';
 import {ApiError,privateJson} from './client.js';
+import {siteRefused} from './errors.js';
 import {draftFile,loadDraft,validateBudget} from './generation.js';
 const hash=w=>createHash('sha256').update(JSON.stringify({version:w.version,graph:w.graph})).digest('hex');
 async function price(client,item){
@@ -45,5 +46,6 @@ export async function submitJob(client,token,maxCredits){
  }else{payload={client_request_id:item.requestId,ai_model_id:item.modelId,price_quote_id:q.price_quote_id};url=`/workflows/${item.workflowId}/nodes/${item.nodeId}/prompt-enhancements`;}
  try{const f=await open(claim,'wx',0o600);await f.writeFile(JSON.stringify({status:'submitting',requestId:item.requestId}));await f.close();}catch(e){if(e.code==='EEXIST')throw new ApiError('already_submitted','This token has already been used.');throw e;}
  try{const result=await client.http(url,{method:'POST',data:payload,version:w.version});await privateJson(claim,{status:'submitted',requestId:item.requestId,result});return {status:'submitted',requestId:item.requestId,...result};}
- catch(e){await privateJson(claim,{status:'request_uncertain',requestId:item.requestId});throw new ApiError('request_uncertain','A single submit attempt was made; inspect run/enhancement state before any new request.',{requestId:item.requestId,cause:e.code});}
+ catch(e){if(siteRefused(e)){await privateJson(claim,{status:'rejected',requestId:item.requestId,cause:e.code});throw new ApiError('submit_rejected',`Neurover refused this request, nothing was started: ${e.message} Fix the cause or wait for running generations, then prepare again.`,{requestId:item.requestId,cause:e.code,httpStatus:e.details?.httpStatus,errors:e.details?.errors});}
+  await privateJson(claim,{status:'request_uncertain',requestId:item.requestId});throw new ApiError('request_uncertain','A single submit attempt was made; inspect run/enhancement state before any new request.',{requestId:item.requestId,cause:e.code});}
 }

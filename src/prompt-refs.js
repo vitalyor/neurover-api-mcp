@@ -63,6 +63,31 @@ function scenarioCounts(schema,settings) {
   const hit=(c?.scenarios||[]).find(s=>Object.entries(s.when||{}).every(([k,v])=>str(settings[k])===str(v)));
   return hit?.reference_counts||{};
 }
+// The site composer's rule: fields in auto_resolve_fields (usually mode) follow from the attached references unless the user chose them.
+// One fitting scenario wins; several: the model's default among them; none or unclear: nothing changes and validateReferences explains why.
+export function autoResolve(schema,settings,chosen,references) {
+  const fields=constraintsOf(schema)?.auto_resolve_fields||[];
+  if(!fields.length||fields.every(k=>k in chosen||schema[k]?.options?.length===1))return {};
+  const list=fittingChoices(schema,settings,references);
+  return list.length===1?list[0]:list.find(p=>fields.every(k=>schema[k]?.default!==undefined&&str(schema[k].default)===str(p[k])))||{};
+}
+const constraintsOf=schema=>Object.values(schema||{}).find(s=>s?.input_constraints)?.input_constraints;
+// Values of the auto-resolved fields (e.g. {mode:'image-edit'}) that accept these references.
+export function fittingChoices(schema,settings,references) {
+  const c=constraintsOf(schema),fields=c?.auto_resolve_fields||[];
+  if(!fields.length||!c.scenarios?.length)return [];
+  const counts={};for(const r of references)counts[r.field]=(counts[r.field]||0)+1;
+  const combos=Object.values(schema).map(s=>s?.allowed_combinations).find(x=>Array.isArray(x)&&x.length);
+  const value=(from,k)=>str(from[k]??schema[k]?.default);
+  const fits=s=>{const limits=Object.entries(s.reference_counts||{}),total=limits.reduce((n,[f])=>n+(counts[f]||0),0);return limits.every(([f,l])=>(counts[f]||0)>=Number(l.min)&&(counts[f]||0)<=Number(l.max))&&!(total<s.min_total_count)&&!(total>s.max_total_count);};
+  const found=new Map();
+  for(const s of c.scenarios){
+    if(!fits(s)||!fields.every(k=>s.when?.[k]!==undefined)||!Object.entries(s.when).every(([k,v])=>fields.includes(k)||value(settings,k)===str(v)))continue;
+    const pick=Object.fromEntries(fields.map(k=>[k,s.when[k]])),merged={...settings,...pick};
+    if(!combos||combos.some(x=>Object.entries(x).every(([k,v])=>value(merged,k)===str(v))))found.set(JSON.stringify(pick),pick);
+  }
+  return [...found.values()];
+}
 const ratio=v=>{if(v===undefined||v===null||v==='')return null;const s=String(v);if(s.includes(':')){const [a,b]=s.split(':').map(Number);return a>0&&b>0?a/b:null;}const n=Number(s);return n>0?n:null;};
 export function orientation(w,h){if(!(w>0&&h>0))return null;const r=w/h;return r>1.05?'landscape':r<0.95?'portrait':'square';}
 

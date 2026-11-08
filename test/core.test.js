@@ -5,6 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {parsePage,privateJson} from '../src/client.js';
 import {charCount,validatePrompt,validateBudget,messageForm,submit,draftFile} from '../src/generation.js';
 import {safeDestination} from '../src/media.js';
+import {ApiError,siteRefused} from '../src/errors.js';
 import {createHash} from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
@@ -33,6 +34,12 @@ test('paid submit rejects over-budget, claims once and survives another call',as
   await submit(c,token,3);assert.equal(sends,1);await assert.rejects(submit(c,token,3),{code:'already_submitted'});assert.equal(sends,1);
  }finally{await unlink(file).catch(()=>{});await unlink(file+'.claimed').catch(()=>{});}
 });
+test('a definite refusal is reported as refused, not uncertain, and the token stays used',async()=>{
+ const token=randomUUID(),file=draftFile(token);const schema={prompt:{max:5000}};let sends=0;
+ const c={account:'test',page:async()=>({modelOptions:[{id:60,input_schema_json:schema}]}),http:async(path)=>{if(path.endsWith('/price-preview'))return {credits_minor:100};sends++;throw new ApiError('http_422','Too many running generations.',{httpStatus:422});}};
+ try{await privateJson(file,{account:'test',workflowId:1,modelId:60,prompt:'test',settings:{},references:[],requestId:randomUUID(),createdAt:Date.now(),quote:{credits_minor:100},schemaHash:createHash('sha256').update(JSON.stringify(schema)).digest('hex')});await assert.rejects(submit(c,token,2),e=>e.code==='submit_rejected'&&e.message.includes('Too many running')&&e.details.httpStatus===422);await assert.rejects(submit(c,token,2),{code:'already_submitted'});assert.equal(sends,1);}finally{await unlink(file).catch(()=>{});await unlink(file+'.claimed').catch(()=>{});}
+});
+test('5xx after a paid send stays uncertain',()=>{assert.equal(siteRefused({code:'http_500',details:{httpStatus:500}}),false);assert.equal(siteRefused({code:'network_error'}),false);assert.equal(siteRefused({code:'http_409',details:{httpStatus:409}}),false);assert.equal(siteRefused({code:'session_expired'}),true);});
 test('uncertain paid request cannot be repeated',async()=>{
  const token=randomUUID(),file=draftFile(token);const schema={prompt:{max:5000}};let sends=0;
  const c={account:'test',page:async()=>({modelOptions:[{id:60,input_schema_json:schema}]}),http:async(path)=>{if(path.endsWith('/price-preview'))return {credits_minor:100};sends++;throw Error('connection lost');}};

@@ -17,5 +17,5 @@ export function generationSummary(value) {
   };
 }
 export function submissionSummary(r) {
-  return {status:r.status,account:r.account,workflowId:r.workflowId,requestId:r.requestId,estimatedCredits:r.estimatedCredits,replayed:r.replayed,user_message:r.user_message?{id:r.user_message.id}:undefined,assistant_message:r.assistant_message?generationSummary(r.assistant_message):undefined,run:r.run?{id:r.run.id,status:r.run.status}:undefined,enhancement:r.enhancement?{id:r.enhancement.id,uuid:r.enhancement.uuid,status:r.enhancement.status}:undefined};
+  return {status:r.status,account:r.account,workflowId:r.workflowId,requestId:r.requestId,estimatedCredits:r.estimatedCredits,replayed:r.replayed,messageId:r.assistant_message?.id,user_message:r.user_message?{id:r.user_message.id}:undefined,assistant_message:r.assistant_message?generationSummary(r.assistant_message):undefined,run:r.run?{id:r.run.id,status:r.run.status}:undefined,enhancement:r.enhancement?{id:r.enhancement.id,uuid:r.enhancement.uuid,status:r.enhancement.status}:undefined};
 }

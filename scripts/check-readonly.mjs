@@ -16,7 +16,7 @@ try{
  }
  const {accounts}=await call('neurover_accounts');
  const account=process.argv[2]||(accounts.length===1?accounts[0]:null);assert.ok(account&&accounts.includes(account),'Provide a configured account as the first argument.');
- for(const name of ['neurover_auth_status','neurover_account_overview','neurover_statistics','neurover_notifications','neurover_profile','neurover_subscriptions'])await call(name,{account});
+ for(const name of ['neurover_auth_status','neurover_account_overview','neurover_statistics','neurover_profile','neurover_subscriptions'])await call(name,{account});
  const list=await call('neurover_workflows',{account});
  const workflowId=Number(process.argv[3]||list.projects?.[0]?.id);assert.ok(Number.isSafeInteger(workflowId)&&workflowId>0,'Provide a workflow ID as the second argument.');
  for(const name of ['neurover_models','neurover_workflow_graph','neurover_generations'])await call(name,{account,workflowId});
