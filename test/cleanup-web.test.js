@@ -161,3 +161,9 @@ test('a long request in flight blocks idle shutdown until it finishes',async t=>
  for(let n=0;n<100&&!s.idle();n++)await pause(10);
  assert.ok(s.idle());
 });
+test('idle gallery stays up while a background cleanup runs (a hidden tab stops polling)',async t=>{
+ const server=http.createServer((req,res)=>res.end('ok'));await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ let busy=true,idleAt=null;const timer=stopWhenIdle(server,{idleMs:50,checkMs:10,busy:async()=>busy,onIdle:()=>{idleAt=Date.now();}});
+ t.after(()=>{clearInterval(timer);server.close();});
+ await new Promise(r=>setTimeout(r,150));assert.equal(idleAt,null);busy=false;await new Promise(r=>setTimeout(r,80));assert.ok(idleAt);
+});

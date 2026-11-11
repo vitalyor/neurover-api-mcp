@@ -11,6 +11,7 @@ import {ApiError,root,clientFor,privateJson,serial} from './client.js';
 import {loadCleanup,cleanupStatus,startVerification,approveCleanup,approveFiles,startCleanup,pauseCleanup,nextCleanup,startScan} from './cleanup.js';
 import {renderReport,libraryGroups,thumbnail} from './cleanup-report.js';
 import {mediaResponse} from './media-source.js';
+import {runningWorkers} from './update.js';
 
 const choices=z.object({groupIds:z.array(z.string().regex(/^[a-f0-9]{12}$/)).min(1).max(10000),groupRetention:z.record(z.string(),z.enum(['keep_one','delete_all'])).default({})});
 const verifySchema=choices.strict();
@@ -145,14 +146,15 @@ export async function runCleanupWeb({defaultJobId,port=8876,idleMs=Number(proces
  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});
  await privateJson(path.join(dataDir,'cleanup-web.json'),{pid:process.pid,port:server.address().port,defaultJobId,startedAt:new Date().toISOString()});
  // Idle shutdown: the open gallery polls every 2.5–10 s, so 10 min without any request means no page is open.
+ // A hidden tab stops polling, so the server stays while a background cleanup runs: the page reconnects when shown again.
  // The next ensureCleanupWeb() call starts a fresh server. Background workers are separate processes and are not affected.
- if(idleMs>0)stopWhenIdle(server,{idleMs,onIdle:()=>{server.close(()=>process.exit(0));server.closeAllConnections?.();setTimeout(()=>process.exit(0),3000).unref();}});
+ if(idleMs>0)stopWhenIdle(server,{idleMs,busy:async()=>(await runningWorkers()).length>0,onIdle:()=>{server.close(()=>process.exit(0));server.closeAllConnections?.();setTimeout(()=>process.exit(0),3000).unref();}});
  return server;
 }
-export function stopWhenIdle(server,{idleMs,checkMs=60000,onIdle}){
+export function stopWhenIdle(server,{idleMs,checkMs=60000,onIdle,busy=async()=>false}){
  let last=Date.now(),inflight=0;
  server.on('request',(req,res)=>{last=Date.now();inflight++;res.on('close',()=>{inflight--;last=Date.now();});});
- const timer=setInterval(()=>{if(inflight===0&&Date.now()-last>idleMs){clearInterval(timer);onIdle();}},checkMs);timer.unref();
+ const timer=setInterval(async()=>{if(inflight===0&&Date.now()-last>idleMs&&!await busy().catch(()=>false)){clearInterval(timer);onIdle();}},checkMs);timer.unref();
  return timer;
 }
 export async function ensureCleanupWeb(jobId,{port=8876}={}){
