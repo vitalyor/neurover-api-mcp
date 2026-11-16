@@ -13,9 +13,10 @@ export function generationSummary(value) {
     estimatedCredits:Number.isFinite(value.reserve_price?.credits_minor)?value.reserve_price.credits_minor/100:undefined,
     finalCredits:Number.isFinite(value.final_price?.credits_minor)?value.final_price.credits_minor/100:Number.isFinite(g.final_credits_minor)?g.final_credits_minor/100:undefined,
     outputs:outputs.map(m=>({id:m.id||m.media_asset_id,type:m.media_type,mimeType:m.mime_type,width:m.width,height:m.height,bytes:m.size_bytes})),
+    stage:g.generation_stage,finalization:g.finalization?{canFinalize:g.finalization.can_finalize,expiresAt:g.finalization.expires_at,unavailableReason:g.finalization.unavailable_reason,finalGenerationId:g.finalization.generation_id,status:g.finalization.status}:undefined,
     timedOut:value.timedOut,updatedAt:value.updated_at||g.updated_at,
   };
 }
 export function submissionSummary(r) {
-  return {status:r.status,account:r.account,workflowId:r.workflowId,requestId:r.requestId,estimatedCredits:r.estimatedCredits,replayed:r.replayed,messageId:r.assistant_message?.id,user_message:r.user_message?{id:r.user_message.id}:undefined,assistant_message:r.assistant_message?generationSummary(r.assistant_message):undefined,run:r.run?{id:r.run.id,status:r.run.status}:undefined,enhancement:r.enhancement?{id:r.enhancement.id,uuid:r.enhancement.uuid,status:r.enhancement.status}:undefined};
+  return {status:r.status,account:r.account,workflowId:r.workflowId,requestId:r.requestId,estimatedCredits:r.estimatedCredits,replayed:r.replayed,messageId:r.assistant_message?.id,user_message:r.user_message?{id:r.user_message.id}:undefined,assistant_message:r.assistant_message?generationSummary(r.assistant_message):undefined,run:r.run?{id:r.run.id,status:r.run.status}:undefined,finalGenerationId:r.generation_id,enhancement:r.enhancement?{id:r.enhancement.id,uuid:r.enhancement.uuid,status:r.enhancement.status}:undefined};
 }
